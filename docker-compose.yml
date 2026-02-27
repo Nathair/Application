@@ -1,36 +1,45 @@
-version: '3.7'
-services: 
-  postgres: 
+version: '3.8'
+
+services:
+  db:
     image: postgres:15 
     restart: always 
-    environment: 
-      - POSTGRES_DB=postgres 
-      - POSTGRES_USER=postgres 
-      - POSTGRES_PASSWORD=prisma 
-    ports: 
+    environment:
+      POSTGRES_USER: user
+      POSTGRES_PASSWORD: password
+      POSTGRES_DB: eventify
+    ports:
       - "5432:5432"
-    networks: 
-      - prisma-network 
-    healthcheck: 
-      test: ["CMD-SHELL", "pg_isready -U prisma -d postgres"] 
-      interval: 5s 
-      timeout: 2s 
-      retries: 20 
-    volumes: 
-      - postgres_data:/var/lib/postgresql/data 
-    command: postgres -c listen_addresses='*' 
-    logging: 
-      options: 
-        max-size: "10m"
-        max-file: "3"
+    volumes:
+      - ./pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U user"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
 
   adminer:
     image: adminer
     restart: always
     ports:
       - 8080:8080
-      
-networks: 
-  prisma-network: 
-volumes: 
-  postgres_data: 
+
+  backend:
+    build:
+      context: ./backend
+    ports:
+      - "3000:3000"
+    environment:
+      DATABASE_URL: postgresql://user:password@db:5432/eventify?schema=public
+      JWT_SECRET: supersecret
+    depends_on:
+      db:
+        condition: service_healthy
+
+  frontend:
+    build:
+      context: ./frontend
+    ports:
+      - "80:80"
+    depends_on:
+      - backend
