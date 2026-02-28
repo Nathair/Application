@@ -1,10 +1,12 @@
 import { useState, useEffect } from 'react';
-import { useForm } from 'react-hook-form';
+import { useForm, Controller } from 'react-hook-form';
 import { yupResolver } from '@hookform/resolvers/yup';
 import * as yup from 'yup';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import api from '../api/axios';
 import { Calendar as CalendarIcon, MapPin, AlignLeft, Users, Type } from 'lucide-react';
+import DatePicker from 'react-datepicker';
+import 'react-datepicker/dist/react-datepicker.css';
 
 const schema = yup.object({
     title: yup.string().required('Title is required'),
@@ -26,7 +28,7 @@ export default function CreateEvent() {
     const [searchParams] = useSearchParams();
     const editId = searchParams.get('edit');
 
-    const { register, handleSubmit, formState: { errors }, setValue } = useForm({
+    const { register, handleSubmit, formState: { errors }, setValue, control } = useForm({
         resolver: yupResolver(schema),
         defaultValues: { visibility: 'PUBLIC', capacity: null }
     });
@@ -118,10 +120,23 @@ export default function CreateEvent() {
                                 <label className="flex items-center text-sm font-semibold text-gray-700 mb-1.5 label-text">
                                     <CalendarIcon size={16} className="mr-2 text-gray-400" /> Date & Time *
                                 </label>
-                                <input
-                                    type="datetime-local"
-                                    {...register('date')}
-                                    className="input-field py-3 px-4 text-base focus:ring-2 bg-gray-50 focus:bg-white transition-colors"
+                                <Controller
+                                    control={control}
+                                    name="date"
+                                    render={({ field }) => (
+                                        <DatePicker
+                                            placeholderText="Select date and time"
+                                            onChange={(date: Date | null) => field.onChange(date)}
+                                            selected={field.value as any}
+                                            showTimeSelect
+                                            timeFormat="HH:mm"
+                                            timeIntervals={15}
+                                            timeCaption="time"
+                                            dateFormat="MMMM d, yyyy h:mm aa"
+                                            className="input-field py-3 px-4 text-base focus:ring-2 bg-gray-50 focus:bg-white transition-colors w-full"
+                                            wrapperClassName="w-full"
+                                        />
+                                    )}
                                 />
                                 {errors.date?.message && <p className="text-red-500 text-xs mt-1.5 font-medium">{String(errors.date.message)}</p>}
                             </div>
