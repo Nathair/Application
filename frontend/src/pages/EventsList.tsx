@@ -80,7 +80,7 @@ export default function EventsList() {
                                         </div>
                                         <div className="flex items-center text-sm text-gray-500">
                                             <Users size={16} className="mr-2 text-gray-400 shrink-0" />
-                                            {event._count?.participants || 0} {event.capacity ? `/ ${event.capacity}` : ''} Joined
+                                            {event._count?.participants || 0} / {event.capacity ? event.capacity : '∞'} Joined
                                         </div>
                                     </div>
                                 </div>

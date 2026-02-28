@@ -141,7 +141,7 @@ export default function EventDetails() {
                                     <div>
                                         <p className="font-semibold">Capacity</p>
                                         <p className="text-sm text-gray-500">
-                                            {currentParticipants} {event.capacity ? `/ ${event.capacity}` : ''} Joined
+                                            {currentParticipants} / {event.capacity ? event.capacity : '∞'} Joined
                                             {isFull && <span className="ml-2 text-red-600 font-medium">(Full)</span>}
                                         </p>
                                     </div>
