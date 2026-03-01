@@ -17,6 +17,7 @@ model User {
   email     String  @unique
   password  String
   name      String
+  refreshToken String?
   organized Event[] @relation("OrganizerEvents")
   participants Participant[]
   createdAt DateTime @default(now())
@@ -28,6 +29,7 @@ model Event {
   title       String
   description String?
   date        DateTime
+  endDate     DateTime?
   location    String
   capacity    Int?
   visibility  Visibility @default(PUBLIC)

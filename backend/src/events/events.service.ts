@@ -35,6 +35,7 @@ export class EventsService {
                 title: createEventDto.title,
                 description: createEventDto.description,
                 date: createEventDto.date,
+                endDate: createEventDto.endDate,
                 location: createEventDto.location,
                 capacity: createEventDto.capacity,
                 visibility: vis,
