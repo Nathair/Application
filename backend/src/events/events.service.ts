@@ -52,6 +52,17 @@ export class EventsService {
             updateData.visibility = updateData.visibility as Visibility;
         }
 
+        if (updateEventDto.capacity !== undefined && updateEventDto.capacity !== null) {
+            const currentObj = await this.prisma.event.findUnique({
+                where: { id: eventId },
+                include: { _count: { select: { participants: true } } }
+            });
+            const currentParticipants = currentObj?._count.participants || 0;
+            if (updateEventDto.capacity < currentParticipants) {
+                throw new BadRequestException(`Capacity cannot be less than current participants (${currentParticipants})`);
+            }
+        }
+
         return this.prisma.event.update({
             where: { id: eventId },
             data: updateData,

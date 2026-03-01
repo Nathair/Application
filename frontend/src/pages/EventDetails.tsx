@@ -148,29 +148,27 @@ export default function EventDetails() {
                                 </div>
                             </div>
 
-                            {!isOrganizer && (
-                                <div className="pt-2">
-                                    {isParticipant ? (
-                                        <button
-                                            onClick={() => handleJoinLeave('leave')}
-                                            className="w-full bg-white hover:bg-red-50 text-red-600 font-semibold py-3 px-4 border-2 border-red-200 rounded-xl transition-all shadow-sm flex justify-center items-center"
-                                        >
-                                            Leave Event
-                                        </button>
-                                    ) : (
-                                        <button
-                                            onClick={() => handleJoinLeave('join')}
-                                            disabled={isFull}
-                                            className="w-full bg-blue-600 hover:bg-blue-700 disabled:bg-gray-300 disabled:text-gray-500 text-white font-semibold py-3 px-4 rounded-xl transition-all shadow-md hover:shadow-lg disabled:shadow-none flex justify-center items-center text-lg"
-                                        >
-                                            {isFull ? 'Event is Full' : 'Join Event'}
-                                        </button>
-                                    )}
-                                </div>
-                            )}
+                            <div className="pt-2">
+                                {isParticipant ? (
+                                    <button
+                                        onClick={() => handleJoinLeave('leave')}
+                                        className="w-full bg-white hover:bg-red-50 text-red-600 font-semibold py-3 px-4 border-2 border-red-200 rounded-xl transition-all shadow-sm flex justify-center items-center"
+                                    >
+                                        Leave Event
+                                    </button>
+                                ) : (
+                                    <button
+                                        onClick={() => handleJoinLeave('join')}
+                                        disabled={isFull}
+                                        className="w-full bg-blue-600 hover:bg-blue-700 disabled:bg-gray-300 disabled:text-gray-500 text-white font-semibold py-3 px-4 rounded-xl transition-all shadow-md hover:shadow-lg disabled:shadow-none flex justify-center items-center text-lg"
+                                    >
+                                        {isFull ? 'Event is Full' : 'Join Event'}
+                                    </button>
+                                )}
+                            </div>
 
                             {isOrganizer && (
-                                <div className="pt-2 flex flex-col gap-3">
+                                <div className="pt-4 mt-2 border-t border-gray-200 flex flex-col gap-3">
                                     <button onClick={() => navigate(`/create-event?edit=${id}`)} className="w-full bg-indigo-50 hover:bg-indigo-100 text-indigo-700 font-semibold py-3 px-4 rounded-xl transition-all border border-indigo-200 flex justify-center items-center">
                                         <Edit3 size={18} className="mr-2" /> Edit Details
                                     </button>
