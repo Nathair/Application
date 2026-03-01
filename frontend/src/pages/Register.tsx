@@ -7,9 +7,14 @@ import api from '../api/axios';
 import { useAuthStore } from '../store/authStore';
 
 const schema = yup.object({
-    name: yup.string().required('Name is required'),
     email: yup.string().email('Invalid email').required('Email is required'),
-    password: yup.string().min(6, 'Must be at least 6 characters').required('Password is required'),
+    password: yup
+        .string()
+        .required('Password is required')
+        .min(6, 'Must be at least 6 characters')
+        .matches(/[A-Z]/, 'Must contain at least one uppercase letter')
+        .matches(/[a-z]/, 'Must contain at least one lowercase letter'),
+    name: yup.string().required('Name is required'),
 });
 
 export default function Register() {
@@ -23,7 +28,8 @@ export default function Register() {
     const onSubmit = async (data: any) => {
         try {
             const response = await api.post('/auth/register', data);
-            loginAction(response.data.user, response.data.access_token);
+            const { user, access_token, refresh_token } = response.data;
+            loginAction(user, access_token, refresh_token);
             navigate('/');
         } catch (err: any) {
             setErrorMsg(err.response?.data?.message || 'Registration failed');
@@ -71,6 +77,7 @@ export default function Register() {
                             placeholder="••••••••"
                         />
                         {errors.password?.message && <p className="text-red-500 text-xs mt-1">{String(errors.password.message)}</p>}
+                        <p className="text-gray-400 text-xs mt-1.5">Minimum 6 characters, with uppercase and lowercase letters</p>
                     </div>
 
                     <button type="submit" className="w-full bg-blue-600 hover:bg-blue-700 text-white font-medium py-2.5 rounded-lg shadow-sm transition-all mt-4 text-base tracking-wide">

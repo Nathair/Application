@@ -22,7 +22,8 @@ export default function Login() {
     const onSubmit = async (data: any) => {
         try {
             const response = await api.post('/auth/login', data);
-            loginAction(response.data.user, response.data.access_token);
+            const { user, access_token, refresh_token } = response.data;
+            loginAction(user, access_token, refresh_token);
             navigate('/');
         } catch (err: any) {
             setErrorMsg(err.response?.data?.message || 'Invalid credentials');
