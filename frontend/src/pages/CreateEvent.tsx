@@ -4,8 +4,9 @@ import { yupResolver } from '@hookform/resolvers/yup';
 import * as yup from 'yup';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import api from '../api/axios';
-import { Calendar as CalendarIcon, MapPin, AlignLeft, Users, Type } from 'lucide-react';
+import { Calendar as CalendarIcon, MapPin, AlignLeft, Users, Type, Eye } from 'lucide-react';
 import DatePicker from 'react-datepicker';
+import { isSameDay } from 'date-fns';
 import 'react-datepicker/dist/react-datepicker.css';
 
 const schema = yup.object({
@@ -13,8 +14,17 @@ const schema = yup.object({
     description: yup.string().optional(),
     date: yup.date()
         .min(new Date(), 'Cannot create events in the past')
-        .required('Date and time are required')
+        .required('Start date and time are required')
         .typeError('Invalid date/time format'),
+    endDate: yup.date()
+        .nullable()
+        .optional()
+        .typeError('Invalid date/time format')
+        .test('is-after-start', 'End date must be after start date', function (value) {
+            const { date } = this.parent;
+            if (!value || !date) return true;
+            return value > date;
+        }),
     location: yup.string().required('Location is required'),
     capacity: yup.number()
         .nullable()
@@ -28,10 +38,12 @@ export default function CreateEvent() {
     const [searchParams] = useSearchParams();
     const editId = searchParams.get('edit');
 
-    const { register, handleSubmit, formState: { errors }, setValue, control } = useForm({
+    const { register, handleSubmit, formState: { errors }, setValue, control, watch } = useForm({
         resolver: yupResolver(schema),
         defaultValues: { visibility: 'PUBLIC', capacity: null }
     });
+
+    const startDate = watch('date');
 
     const [loading, setLoading] = useState(false);
     const [pageLoading, setPageLoading] = useState(!!editId);
@@ -43,8 +55,8 @@ export default function CreateEvent() {
                 const ev = res.data;
                 setValue('title', ev.title);
                 setValue('description', ev.description || '');
-                // format date for datetime-local input
                 setValue('date', new Date(ev.date) as any);
+                if (ev.endDate) setValue('endDate', new Date(ev.endDate) as any);
                 setValue('location', ev.location);
                 setValue('capacity', ev.capacity);
                 setValue('visibility', ev.visibility);
@@ -77,6 +89,8 @@ export default function CreateEvent() {
         return <div className="flex justify-center items-center h-64"><div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600"></div></div>;
     }
 
+    const datepickerClass = "input-field py-3 px-4 text-base focus:ring-2 bg-gray-50 focus:bg-white transition-colors w-full";
+
     return (
         <div className="max-w-2xl mx-auto py-8">
             <div className="bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden">
@@ -91,8 +105,9 @@ export default function CreateEvent() {
 
                 <div className="p-8">
                     <form onSubmit={handleSubmit(onSubmit)} className="space-y-6">
+                        {/* Title */}
                         <div>
-                            <label className="flex items-center text-sm font-semibold text-gray-700 mb-1.5 label-text">
+                            <label className="flex items-center text-sm font-semibold text-gray-700 mb-1.5">
                                 <Type size={16} className="mr-2 text-gray-400" /> Event Title *
                             </label>
                             <input
@@ -103,8 +118,9 @@ export default function CreateEvent() {
                             {errors.title?.message && <p className="text-red-500 text-xs mt-1.5 font-medium">{String(errors.title.message)}</p>}
                         </div>
 
+                        {/* Description */}
                         <div>
-                            <label className="flex items-center text-sm font-semibold text-gray-700 mb-1.5 label-text">
+                            <label className="flex items-center text-sm font-semibold text-gray-700 mb-1.5">
                                 <AlignLeft size={16} className="mr-2 text-gray-400" /> Description
                             </label>
                             <textarea
@@ -115,26 +131,30 @@ export default function CreateEvent() {
                             />
                         </div>
 
+                        {/* Start Date (required) + End Date (optional) */}
                         <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                             <div>
-                                <label className="flex items-center text-sm font-semibold text-gray-700 mb-1.5 label-text">
-                                    <CalendarIcon size={16} className="mr-2 text-gray-400" /> Date & Time *
+                                <label className="flex items-center text-sm font-semibold text-gray-700 mb-1.5">
+                                    <CalendarIcon size={16} className="mr-2 text-gray-400" /> Start Date & Time *
                                 </label>
                                 <Controller
                                     control={control}
                                     name="date"
                                     render={({ field }) => (
                                         <DatePicker
-                                            placeholderText="Select date and time"
+                                            placeholderText="Select start date & time"
                                             onChange={(date: Date | null) => field.onChange(date)}
                                             selected={field.value as any}
                                             showTimeSelect
                                             timeFormat="HH:mm"
                                             timeIntervals={15}
                                             timeCaption="time"
-                                            dateFormat="MMMM d, yyyy h:mm aa"
-                                            className="input-field py-3 px-4 text-base focus:ring-2 bg-gray-50 focus:bg-white transition-colors w-full"
+                                            dateFormat="MMM d, yyyy h:mm aa"
+                                            className={datepickerClass}
                                             wrapperClassName="w-full"
+                                            minDate={new Date()}
+                                            minTime={field.value && isSameDay(new Date(), new Date(field.value as any)) ? new Date() : undefined}
+                                            maxTime={field.value && isSameDay(new Date(), new Date(field.value as any)) ? new Date(new Date().setHours(23, 59, 59)) : undefined}
                                         />
                                     )}
                                 />
@@ -142,47 +162,110 @@ export default function CreateEvent() {
                             </div>
 
                             <div>
-                                <label className="flex items-center text-sm font-semibold text-gray-700 mb-1.5 label-text">
-                                    <MapPin size={16} className="mr-2 text-gray-400" /> Location *
+                                <label className="flex items-center text-sm font-semibold text-gray-700 mb-1.5">
+                                    <CalendarIcon size={16} className="mr-2 text-gray-400" /> End Date & Time <span className="ml-1 text-gray-400 font-normal">(optional)</span>
                                 </label>
-                                <input
-                                    {...register('location')}
-                                    className="input-field py-3 px-4 text-base focus:ring-2 bg-gray-50 focus:bg-white transition-colors"
-                                    placeholder="e.g. 123 Main St, City"
+                                <Controller
+                                    control={control}
+                                    name="endDate"
+                                    render={({ field }) => (
+                                        <DatePicker
+                                            placeholderText="Select end date & time"
+                                            onChange={(date: Date | null) => field.onChange(date)}
+                                            selected={field.value as any}
+                                            showTimeSelect
+                                            timeFormat="HH:mm"
+                                            timeIntervals={15}
+                                            timeCaption="time"
+                                            dateFormat="MMM d, yyyy h:mm aa"
+                                            className={datepickerClass}
+                                            wrapperClassName="w-full"
+                                            isClearable
+                                            minDate={startDate ? new Date(startDate) : new Date()}
+                                            minTime={startDate && field.value && isSameDay(new Date(startDate), new Date(field.value as any))
+                                                ? new Date(new Date(startDate).getTime() + 15 * 60000)
+                                                : undefined}
+                                            maxTime={startDate && field.value && isSameDay(new Date(startDate), new Date(field.value as any))
+                                                ? new Date(new Date(startDate).setHours(23, 59, 59))
+                                                : undefined}
+                                        />
+                                    )}
                                 />
-                                {errors.location?.message && <p className="text-red-500 text-xs mt-1.5 font-medium">{String(errors.location.message)}</p>}
+                                {errors.endDate?.message && <p className="text-red-500 text-xs mt-1.5 font-medium">{String(errors.endDate.message)}</p>}
                             </div>
                         </div>
 
-                        <div className="grid grid-cols-1 md:grid-cols-2 gap-6 pb-2">
-                            <div>
-                                <label className="flex items-center text-sm font-semibold text-gray-700 mb-1.5 label-text">
-                                    <Users size={16} className="mr-2 text-gray-400" /> Capacity (Optional)
-                                </label>
-                                <input
-                                    type="number"
-                                    {...register('capacity')}
-                                    className="input-field py-3 px-4 text-base focus:ring-2 bg-gray-50 focus:bg-white transition-colors"
-                                    placeholder="Leave empty for unlimited"
-                                />
-                                {errors.capacity?.message && <p className="text-red-500 text-xs mt-1.5 font-medium">{String(errors.capacity.message)}</p>}
-                            </div>
+                        {/* Location */}
+                        <div>
+                            <label className="flex items-center text-sm font-semibold text-gray-700 mb-1.5">
+                                <MapPin size={16} className="mr-2 text-gray-400" /> Location *
+                            </label>
+                            <input
+                                {...register('location')}
+                                className="input-field py-3 px-4 text-base focus:ring-2 bg-gray-50 focus:bg-white transition-colors"
+                                placeholder="e.g. 123 Main St, City"
+                            />
+                            {errors.location?.message && <p className="text-red-500 text-xs mt-1.5 font-medium">{String(errors.location.message)}</p>}
+                        </div>
 
-                            <div>
-                                <label className="block text-sm font-semibold text-gray-700 mb-3">Visibility</label>
-                                <div className="flex space-x-6 items-center h-12">
-                                    <label className="flex items-center space-x-2 cursor-pointer group">
-                                        <input type="radio" value="PUBLIC" {...register('visibility')} className="w-5 h-5 text-blue-600 focus:ring-blue-500 cursor-pointer" />
-                                        <span className="text-md text-gray-700 group-hover:text-gray-900 transition-colors">Public</span>
-                                    </label>
-                                    <label className="flex items-center space-x-2 cursor-pointer group">
-                                        <input type="radio" value="PRIVATE" {...register('visibility')} className="w-5 h-5 text-blue-600 focus:ring-blue-500 cursor-pointer" />
-                                        <span className="text-md text-gray-700 group-hover:text-gray-900 transition-colors">Private</span>
-                                    </label>
-                                </div>
+                        {/* Capacity */}
+                        <div>
+                            <label className="flex items-center text-sm font-semibold text-gray-700 mb-1.5">
+                                <Users size={16} className="mr-2 text-gray-400" /> Capacity (Optional)
+                            </label>
+                            <Controller
+                                control={control}
+                                name="capacity"
+                                render={({ field }) => (
+                                    <input
+                                        type="number"
+                                        value={field.value ?? ''}
+                                        onKeyDown={(e) => {
+                                            if (!/^\d$/.test(e.key) && e.key !== 'Backspace' && e.key !== 'Tab') {
+                                                e.preventDefault();
+                                            }
+                                        }}
+                                        onChange={e => {
+                                            const raw = e.target.value;
+                                            const val = raw === '' ? null : parseInt(raw, 10);
+                                            if (val !== null && val < 1) {
+                                                field.onChange(null);
+                                            } else {
+                                                field.onChange(val);
+                                            }
+                                        }}
+                                        className="input-field py-3 px-4 text-base focus:ring-2 bg-gray-50 focus:bg-white transition-colors"
+                                        placeholder="Leave empty for unlimited (∞)"
+                                    />
+                                )}
+                            />
+                            {errors.capacity?.message && <p className="text-red-500 text-xs mt-1.5 font-medium">{String(errors.capacity.message)}</p>}
+                        </div>
+
+                        {/* Visibility with explanations */}
+                        <div>
+                            <label className="flex items-center text-sm font-semibold text-gray-700 mb-3">
+                                <Eye size={16} className="mr-2 text-gray-400" /> Visibility
+                            </label>
+                            <div className="flex flex-col md:flex-row gap-4">
+                                <label className="flex-1 flex items-start gap-3 cursor-pointer group p-3 rounded-xl hover:bg-gray-50 border border-gray-100 hover:border-blue-200 transition-all">
+                                    <input type="radio" value="PUBLIC" {...register('visibility')} className="mt-0.5 w-4 h-4 text-blue-600 focus:ring-blue-500 shrink-0 cursor-pointer" />
+                                    <span className="text-sm text-gray-700 leading-snug">
+                                        <span className="font-semibold text-gray-900 block">Public</span>
+                                        <span className="text-gray-500 text-xs">Visible to all users on the Events page</span>
+                                    </span>
+                                </label>
+                                <label className="flex-1 flex items-start gap-3 cursor-pointer group p-3 rounded-xl hover:bg-gray-50 border border-gray-100 hover:border-blue-200 transition-all">
+                                    <input type="radio" value="PRIVATE" {...register('visibility')} className="mt-0.5 w-4 h-4 text-blue-600 focus:ring-blue-500 shrink-0 cursor-pointer" />
+                                    <span className="text-sm text-gray-700 leading-snug">
+                                        <span className="font-semibold text-gray-900 block">Private</span>
+                                        <span className="text-gray-500 text-xs">Only accessible via direct link</span>
+                                    </span>
+                                </label>
                             </div>
                         </div>
 
+                        {/* Actions */}
                         <div className="pt-6 border-t border-gray-100 flex justify-end gap-3">
                             <button
                                 type="button"

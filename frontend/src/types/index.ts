@@ -9,6 +9,7 @@ export interface Event {
     title: string;
     description?: string;
     date: string;
+    endDate?: string | null;
     location: string;
     capacity?: number;
     visibility: 'PUBLIC' | 'PRIVATE';
