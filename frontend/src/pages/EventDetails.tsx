@@ -125,7 +125,7 @@ export default function EventDetails() {
     const isParticipant = event.participants?.some(p => p.user.id === user?.id);
     const currentParticipants = event.participants?.length || 0;
     const isFull = event.capacity ? currentParticipants >= event.capacity : false;
-    const isFinished = isBefore(parseISO(event.endDate || event.date), new Date());
+    const isFinished = isBefore(parseISO(event.date), new Date());
 
     return (
         <>

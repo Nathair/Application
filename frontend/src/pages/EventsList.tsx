@@ -57,9 +57,9 @@ export default function EventsList() {
         // Temporal filter (Active/Past)
         const now = new Date();
         if (temporalFilter === 'active') {
-            result = result.filter(e => !isBefore(parseISO(e.endDate || e.date), now));
+            result = result.filter(e => !isBefore(parseISO(e.date), now));
         } else if (temporalFilter === 'past') {
-            result = result.filter(e => isBefore(parseISO(e.endDate || e.date), now));
+            result = result.filter(e => isBefore(parseISO(e.date), now));
         }
 
         // Final sort: active early first, past late first
@@ -198,7 +198,7 @@ export default function EventsList() {
                                             {isFull && (
                                                 <span className="inline-flex items-center rounded-full bg-red-50 px-2.5 py-0.5 text-xs font-semibold text-red-700">Full</span>
                                             )}
-                                            {isBefore(parseISO(event.endDate || event.date), new Date()) && (
+                                            {isBefore(parseISO(event.date), new Date()) && (
                                                 <span className="inline-flex items-center rounded-full bg-gray-100 px-2.5 py-0.5 text-xs font-semibold text-gray-600">Finished</span>
                                             )}
                                         </div>

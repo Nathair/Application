@@ -6,7 +6,7 @@ import { useNavigate, useSearchParams } from 'react-router-dom';
 import api from '../api/axios';
 import { Calendar as CalendarIcon, MapPin, AlignLeft, Users, Type, Eye } from 'lucide-react';
 import DatePicker from 'react-datepicker';
-import { isSameDay } from 'date-fns';
+import { isSameDay, isBefore } from 'date-fns';
 import 'react-datepicker/dist/react-datepicker.css';
 
 const schema = yup.object({
@@ -53,6 +53,13 @@ export default function CreateEvent() {
         if (editId) {
             api.get(`/events/${editId}`).then(res => {
                 const ev = res.data;
+                const isFinished = isBefore(new Date(ev.date), new Date());
+
+                if (isFinished) {
+                    navigate(`/events/${editId}`);
+                    return;
+                }
+
                 setValue('title', ev.title);
                 setValue('description', ev.description || '');
                 setValue('date', new Date(ev.date) as any);
@@ -235,7 +242,7 @@ export default function CreateEvent() {
                                             }
                                         }}
                                         className="input-field py-3 px-4 text-base focus:ring-2 bg-gray-50 focus:bg-white transition-colors"
-                                        placeholder={!field.value && field.value !== 0 ? "Set visitor limit or leave for no limit" : ""}                                        
+                                        placeholder={!field.value && field.value !== 0 ? "Set visitor limit or leave for no limit" : ""}
                                     />
                                 )}
                             />
