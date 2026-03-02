@@ -153,8 +153,8 @@ export default function CreateEvent() {
                                             className={datepickerClass}
                                             wrapperClassName="w-full"
                                             minDate={new Date()}
-                                            minTime={field.value && isSameDay(new Date(), new Date(field.value as any)) ? new Date() : undefined}
-                                            maxTime={field.value && isSameDay(new Date(), new Date(field.value as any)) ? new Date(new Date().setHours(23, 59, 59)) : undefined}
+                                            minTime={isSameDay(new Date(), field.value ? new Date(field.value as any) : new Date()) ? new Date() : undefined}
+                                            maxTime={isSameDay(new Date(), field.value ? new Date(field.value as any) : new Date()) ? new Date(new Date().setHours(23, 59, 59)) : undefined}
                                         />
                                     )}
                                 />
@@ -182,10 +182,10 @@ export default function CreateEvent() {
                                             wrapperClassName="w-full"
                                             isClearable
                                             minDate={startDate ? new Date(startDate) : new Date()}
-                                            minTime={startDate && field.value && isSameDay(new Date(startDate), new Date(field.value as any))
-                                                ? new Date(new Date(startDate).getTime() + 15 * 60000)
+                                            minTime={startDate && isSameDay(new Date(startDate), field.value ? new Date(field.value as any) : new Date(startDate))
+                                                ? new Date(new Date(startDate).getTime() + 15 * 60 * 1000)
                                                 : undefined}
-                                            maxTime={startDate && field.value && isSameDay(new Date(startDate), new Date(field.value as any))
+                                            maxTime={startDate && isSameDay(new Date(startDate), field.value ? new Date(field.value as any) : new Date(startDate))
                                                 ? new Date(new Date(startDate).setHours(23, 59, 59))
                                                 : undefined}
                                         />

@@ -7,7 +7,8 @@ import {
     addWeeks, subWeeks, parseISO, isPast
 } from 'date-fns';
 import { useNavigate } from 'react-router-dom';
-import { CalendarIcon, ChevronLeft, ChevronRight, Clock, MapPin } from 'lucide-react';
+import { CalendarIcon, ChevronLeft, ChevronRight, Clock, MapPin, User as UserIcon, Users as UsersIcon } from 'lucide-react';
+import { useAuthStore } from '../store/authStore';
 
 export default function MyEvents() {
     const [events, setEvents] = useState<Event[]>([]);
@@ -15,6 +16,8 @@ export default function MyEvents() {
     const [currentDate, setCurrentDate] = useState(new Date());
     const [view, setView] = useState<'month' | 'week' | 'list'>('month');
     const [temporalFilter, setTemporalFilter] = useState<'future' | 'past' | 'all'>('future');
+    const [roleFilter, setRoleFilter] = useState<'all' | 'creator' | 'participant'>('all');
+    const { user } = useAuthStore();
     const navigate = useNavigate();
 
     useEffect(() => {
@@ -45,8 +48,14 @@ export default function MyEvents() {
         );
     }
 
+    const filteredEvents = events.filter(ev => {
+        if (roleFilter === 'creator') return ev.organizerId === user?.id;
+        if (roleFilter === 'participant') return ev.organizerId !== user?.id;
+        return true;
+    });
+
     const eventsOnDay = (day: Date) =>
-        events.filter(e => isSameDay(parseISO(e.date), day));
+        filteredEvents.filter(e => isSameDay(parseISO(e.date), day));
 
     const EventPill = ({ ev }: { ev: Event }) => {
         const past = isPast(new Date(ev.date));
@@ -155,7 +164,7 @@ export default function MyEvents() {
 
     // ── List View ───────────────────────────────────────────────────────────────
     const renderList = () => {
-        const filtered = events.filter(ev => {
+        const filtered = filteredEvents.filter(ev => {
             if (temporalFilter === 'future') return !isPast(new Date(ev.date));
             if (temporalFilter === 'past') return isPast(new Date(ev.date));
             return true;
@@ -247,8 +256,33 @@ export default function MyEvents() {
 
             {/* Controls */}
             <div className="flex flex-wrap items-center justify-between gap-4">
-                <h2 className="text-xl font-bold text-gray-900">{navTitle}</h2>
-                <div className="flex items-center gap-2 flex-wrap">
+                <div className="space-y-4">
+                    <h2 className="text-xl font-bold text-gray-900">{navTitle}</h2>
+
+                    {/* Role Filter Tabs */}
+                    <div className="flex bg-gray-100 rounded-lg p-1 border border-gray-200 w-fit">
+                        <button
+                            onClick={() => setRoleFilter('all')}
+                            className={`flex items-center gap-1.5 px-3 py-1.5 rounded-md text-sm font-semibold transition-all ${roleFilter === 'all' ? 'bg-white shadow text-blue-600' : 'text-gray-500 hover:text-gray-900'}`}
+                        >
+                            All
+                        </button>
+                        <button
+                            onClick={() => setRoleFilter('creator')}
+                            className={`flex items-center gap-1.5 px-3 py-1.5 rounded-md text-sm font-semibold transition-all ${roleFilter === 'creator' ? 'bg-white shadow text-blue-600' : 'text-gray-500 hover:text-gray-900'}`}
+                        >
+                            <UserIcon size={14} /> Organized
+                        </button>
+                        <button
+                            onClick={() => setRoleFilter('participant')}
+                            className={`flex items-center gap-1.5 px-3 py-1.5 rounded-md text-sm font-semibold transition-all ${roleFilter === 'participant' ? 'bg-white shadow text-blue-600' : 'text-gray-500 hover:text-gray-900'}`}
+                        >
+                            <UsersIcon size={14} /> Joined
+                        </button>
+                    </div>
+                </div>
+
+                <div className="flex items-center gap-2 flex-wrap min-h-[80px] self-end">
                     {/* View switcher */}
                     <div className="flex bg-gray-100 rounded-lg p-1 border border-gray-200">
                         {(['month', 'week', 'list'] as const).map(v => (
