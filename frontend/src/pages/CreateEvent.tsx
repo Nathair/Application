@@ -235,7 +235,7 @@ export default function CreateEvent() {
                                             }
                                         }}
                                         className="input-field py-3 px-4 text-base focus:ring-2 bg-gray-50 focus:bg-white transition-colors"
-                                        placeholder="Leave empty for unlimited (∞)"
+                                        placeholder={!field.value && field.value !== 0 ? "Set visitor limit or leave for no limit" : ""}                                        
                                     />
                                 )}
                             />
