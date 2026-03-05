@@ -55,12 +55,12 @@ export default function EventDetails() {
     };
 
     const handleDelete = () => {
-        showModal('confirm', 'Cancel Event', 'Are you sure you want to cancel this event? All participants will be removed.', async () => {
+        showModal('confirm', 'Delete Event', 'Are you sure you want to delete this event?', async () => {
             try {
                 await api.delete(`/events/${id}`);
                 navigate('/my-events');
             } catch {
-                showModal('error', 'Error', 'Failed to cancel the event. Please try again.');
+                showModal('error', 'Error', 'Failed to delete the event. Please try again.');
             }
         });
     };
@@ -222,7 +222,7 @@ export default function EventDetails() {
                                             </button>
                                         )}
                                         <button onClick={handleDelete} className="w-full bg-white hover:bg-red-50 text-red-600 font-semibold py-3 px-4 border-2 border-red-200 rounded-xl transition-all shadow-sm flex justify-center items-center">
-                                            <Trash2 size={18} className="mr-2" /> Cancel Event
+                                            <Trash2 size={18} className="mr-2" /> Delete Event
                                         </button>
                                     </div>
                                 )}
