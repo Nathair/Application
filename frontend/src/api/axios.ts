@@ -2,7 +2,7 @@ import axios from 'axios';
 import { useAuthStore } from '../store/authStore';
 
 const api = axios.create({
-    baseURL: 'http://localhost:3000/api',
+    baseURL: import.meta.env.VITE_API_URL || 'http://localhost:3000/api',
 });
 
 api.interceptors.request.use(
@@ -28,7 +28,8 @@ api.interceptors.response.use(
 
             if (rt && user.id) {
                 try {
-                    const res = await axios.post('http://localhost:3000/api/auth/refresh', {
+                    const baseUrl = import.meta.env.VITE_API_URL || 'http://localhost:3000/api';
+                    const res = await axios.post(`${baseUrl}/auth/refresh`, {
                         refreshToken: rt,
                         userId: user.id,
                     });
