@@ -2,6 +2,10 @@
 
 A full-stack web application for creating, discovering, and managing events. Built with a focus on clean UI, robust validation, and seamless user experience.
 
+---
+**🌐 Live Demo:** [https://eventify.nathair.dev](https://eventify.nathair.dev)
+---
+
 ## 🚀 Features
 
 - **User Authentication**: Secure Login and Registration with JWT (Access & Refresh Token rotation).
