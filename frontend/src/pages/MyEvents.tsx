@@ -6,26 +6,77 @@ import {
     endOfWeek, isSameMonth, isSameDay, addMonths, subMonths,
     addWeeks, subWeeks, parseISO, isPast
 } from 'date-fns';
-import { useNavigate } from 'react-router-dom';
-import { CalendarIcon, ChevronLeft, ChevronRight, Clock, MapPin, User as UserIcon, Users as UsersIcon } from 'lucide-react';
+import { useNavigate, useSearchParams } from 'react-router-dom';
+import { CalendarIcon, ChevronLeft, ChevronRight, Clock, MapPin, User as UserIcon, Users as UsersIcon, Edit3, LogOut } from 'lucide-react';
 import { useAuthStore } from '../store/authStore';
+import { Modal, type ModalProps } from '../components/Modal';
 
 export default function MyEvents() {
+    const [searchParams, setSearchParams] = useSearchParams();
+    const navigate = useNavigate();
+    const { user } = useAuthStore();
+
     const [events, setEvents] = useState<Event[]>([]);
     const [loading, setLoading] = useState(true);
-    const [currentDate, setCurrentDate] = useState(new Date());
-    const [view, setView] = useState<'month' | 'week' | 'list'>('month');
-    const [temporalFilter, setTemporalFilter] = useState<'future' | 'past' | 'all'>('future');
-    const [roleFilter, setRoleFilter] = useState<'all' | 'creator' | 'participant'>('all');
-    const { user } = useAuthStore();
-    const navigate = useNavigate();
+
+    const [currentDate, setCurrentDate] = useState(() => {
+        const d = searchParams.get('date');
+        return d ? new Date(d) : new Date();
+    });
+    const [view, setView] = useState<'month' | 'week' | 'list'>(() => {
+        const v = searchParams.get('view');
+        return (v === 'month' || v === 'week' || v === 'list') ? v : 'month';
+    });
+    const [temporalFilter, setTemporalFilter] = useState<'future' | 'past' | 'all'>(() => {
+        const f = searchParams.get('temporal');
+        return (f === 'future' || f === 'past' || f === 'all') ? f : 'future';
+    });
+    const [roleFilter, setRoleFilter] = useState<'all' | 'creator' | 'participant'>(() => {
+        const r = searchParams.get('role');
+        return (r === 'all' || r === 'creator' || r === 'participant') ? r : 'all';
+    });
+
+    // Modal state
+    const [modal, setModal] = useState<{
+        open: boolean; type: ModalProps['type']; title: string; message: string; onConfirm?: () => void;
+    }>({ open: false, type: 'info', title: '', message: '' });
+
+    const showModal = (type: ModalProps['type'], title: string, message: string, onConfirm?: () => void) => {
+        setModal({ open: true, type, title, message, onConfirm });
+    };
 
     useEffect(() => {
+        const params: any = {
+            view,
+            role: roleFilter,
+            temporal: temporalFilter,
+            date: currentDate.toISOString()
+        };
+        setSearchParams(params, { replace: true });
+    }, [view, roleFilter, temporalFilter, currentDate, setSearchParams]);
+
+    const fetchEvents = () => {
+        setLoading(true);
         api.get('/users/me/events')
             .then(res => setEvents(res.data))
             .catch(console.error)
             .finally(() => setLoading(false));
+    };
+
+    useEffect(() => {
+        fetchEvents();
     }, []);
+
+    const handleLeave = (eventId: number) => {
+        showModal('confirm', 'Leave Event', 'Are you sure you want to leave this event?', async () => {
+            try {
+                await api.post(`/events/${eventId}/leave`);
+                fetchEvents();
+            } catch (err: any) {
+                showModal('error', 'Error', err.response?.data?.message || 'Failed to leave event');
+            }
+        });
+    };
 
     if (loading) {
         return <div className="flex justify-center items-center h-64"><div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600"></div></div>;
@@ -50,7 +101,7 @@ export default function MyEvents() {
 
     const filteredEvents = events.filter(ev => {
         if (roleFilter === 'creator') return ev.organizerId === user?.id;
-        if (roleFilter === 'participant') return ev.organizerId !== user?.id;
+        if (roleFilter === 'participant') return ev.participants?.some(p => p.user.id === user?.id);
         return true;
     });
 
@@ -193,38 +244,63 @@ export default function MyEvents() {
                     {filtered.length === 0 ? (
                         <div className="p-12 text-center text-gray-500">No {temporalFilter} events found.</div>
                     ) : (
-                        filtered.map(ev => (
-                            <div key={ev.id} className="p-6 hover:bg-gray-50 transition-colors flex flex-col md:flex-row md:items-center justify-between gap-4">
-                                <div className="flex items-start gap-4">
-                                    <div className="bg-blue-50 border border-blue-100 rounded-xl p-3 flex flex-col items-center min-w-[80px] text-blue-700 shrink-0">
-                                        <span className="text-xs font-bold uppercase tracking-wider">{format(new Date(ev.date), 'MMM')}</span>
-                                        <span className="text-2xl font-black">{format(new Date(ev.date), 'dd')}</span>
-                                    </div>
-                                    <div>
-                                        <h3 className="text-lg font-bold text-gray-900 cursor-pointer hover:text-blue-600 transition-colors" onClick={() => navigate(`/events/${ev.id}`)}>
-                                            {ev.title}
-                                        </h3>
-                                        <div className="flex flex-wrap items-center gap-x-4 gap-y-1 text-sm text-gray-500 mt-1">
-                                            <span className="flex items-start">
-                                                <Clock size={14} className="mr-1.5 mt-0.5 shrink-0" />
-                                                <div className="flex flex-col">
-                                                    <span>{format(new Date(ev.date), 'h:mm a')}</span>
-                                                    {ev.endDate && (
-                                                        <span className="text-xs text-gray-400">
-                                                            – {format(new Date(ev.endDate), isSameDay(parseISO(ev.date), parseISO(ev.endDate)) ? 'h:mm a' : 'MMM d, h:mm a')}
-                                                        </span>
-                                                    )}
-                                                </div>
-                                            </span>
-                                            <span className="flex items-center"><MapPin size={14} className="mr-1.5" />{ev.location}</span>
+                        filtered.map(ev => {
+                            const isOrganizer = ev.organizerId === user?.id;
+                            const isParticipant = ev.participants?.some(p => p.user.id === user?.id);
+                            const past = isPast(new Date(ev.date));
+
+                            return (
+                                <div key={ev.id} className="p-6 hover:bg-gray-50 transition-colors flex flex-col md:flex-row md:items-center justify-between gap-4">
+                                    <div className="flex items-start gap-4">
+                                        <div className="bg-blue-50 border border-blue-100 rounded-xl p-3 flex flex-col items-center min-w-[80px] text-blue-700 shrink-0">
+                                            <span className="text-xs font-bold uppercase tracking-wider">{format(new Date(ev.date), 'MMM')}</span>
+                                            <span className="text-2xl font-black">{format(new Date(ev.date), 'dd')}</span>
+                                        </div>
+                                        <div>
+                                            <h3 className="text-lg font-bold text-gray-900 cursor-pointer hover:text-blue-600 transition-colors" onClick={() => navigate(`/events/${ev.id}`)}>
+                                                {ev.title}
+                                            </h3>
+                                            <div className="flex flex-wrap items-center gap-x-4 gap-y-1 text-sm text-gray-500 mt-1">
+                                                <span className="flex items-start">
+                                                    <Clock size={14} className="mr-1.5 mt-0.5 shrink-0" />
+                                                    <div className="flex flex-col">
+                                                        <span>{format(new Date(ev.date), 'h:mm a')}</span>
+                                                        {ev.endDate && (
+                                                            <span className="text-xs text-gray-400">
+                                                                – {format(new Date(ev.endDate), isSameDay(parseISO(ev.date), parseISO(ev.endDate)) ? 'h:mm a' : 'MMM d, h:mm a')}
+                                                            </span>
+                                                        )}
+                                                    </div>
+                                                </span>
+                                                <span className="flex items-center"><MapPin size={14} className="mr-1.5" />{ev.location}</span>
+                                            </div>
                                         </div>
                                     </div>
+
+                                    <div className="flex flex-wrap gap-2 md:justify-end">
+                                        {isOrganizer && !past && (
+                                            <button
+                                                onClick={(e) => { e.stopPropagation(); navigate(`/create-event?edit=${ev.id}`); }}
+                                                className="whitespace-nowrap text-indigo-600 hover:text-indigo-800 text-sm font-semibold border border-indigo-200 rounded-lg px-4 py-2 hover:bg-indigo-50 transition-colors flex items-center gap-1.5"
+                                            >
+                                                <Edit3 size={14} /> Edit
+                                            </button>
+                                        )}
+                                        {isParticipant && !past && (
+                                            <button
+                                                onClick={(e) => { e.stopPropagation(); handleLeave(ev.id); }}
+                                                className="whitespace-nowrap text-red-600 hover:text-red-800 text-sm font-semibold border border-red-200 rounded-lg px-4 py-2 hover:bg-red-50 transition-colors flex items-center gap-1.5"
+                                            >
+                                                <LogOut size={14} /> Leave
+                                            </button>
+                                        )}
+                                        <button onClick={() => navigate(`/events/${ev.id}`)} className="whitespace-nowrap text-blue-600 hover:text-blue-800 text-sm font-semibold border border-blue-200 rounded-lg px-4 py-2 hover:bg-blue-50 transition-colors">
+                                            View Details
+                                        </button>
+                                    </div>
                                 </div>
-                                <button onClick={() => navigate(`/events/${ev.id}`)} className="whitespace-nowrap text-blue-600 hover:text-blue-800 text-sm font-semibold border border-blue-200 rounded-lg px-4 py-2 hover:bg-blue-50 transition-colors">
-                                    View Details
-                                </button>
-                            </div>
-                        ))
+                            );
+                        })
                     )}
                 </div>
             </div>
@@ -316,6 +392,16 @@ export default function MyEvents() {
             {view === 'month' && renderMonth()}
             {view === 'week' && renderWeek()}
             {view === 'list' && renderList()}
+
+            <Modal
+                isOpen={modal.open}
+                type={modal.type}
+                title={modal.title}
+                message={modal.message}
+                confirmLabel="Yes, proceed"
+                onConfirm={modal.onConfirm}
+                onClose={() => setModal(m => ({ ...m, open: false }))}
+            />
         </div>
     );
 }

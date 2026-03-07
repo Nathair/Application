@@ -16,11 +16,12 @@ export class UsersController {
         const userId = req.user.id;
         const organized = await this.prisma.event.findMany({
             where: { organizerId: userId },
+            include: { participants: { include: { user: { select: { id: true, name: true } } } } },
         });
 
         const participations = await this.prisma.participant.findMany({
             where: { userId },
-            include: { event: true },
+            include: { event: { include: { participants: { include: { user: { select: { id: true, name: true } } } } } } },
         });
         const participated = participations.map(p => p.event);
 
