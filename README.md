@@ -5,6 +5,9 @@ A full-stack web application for creating, discovering, and managing events. Bui
 ---
 **🌐 Live Demo:** [https://eventify.nathair.dev](https://eventify.nathair.dev)
 ---
+**🌐 API Documentation:** [https://eventify.nathair.dev/api/docs](https://eventify.nathair.dev/api/docs)
+---
+---
 
 ## 🚀 Features
 
