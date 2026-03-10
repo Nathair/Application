@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { Link, useNavigate, useLocation } from 'react-router-dom';
 import { useAuthStore } from '../store/authStore';
-import { LogOut, Calendar, Home, PlusCircle, Menu, X, Tag as TagIcon } from 'lucide-react';
+import { LogOut, Calendar, Home, PlusCircle, Menu, X, Tag as TagIcon, Sparkles } from 'lucide-react';
 import { useSettingsStore } from '../store/settingsStore';
 
 export default function Navbar() {
@@ -49,6 +49,9 @@ export default function Navbar() {
                                     </Link>
                                     <Link to="/create-event" className={`inline-flex items-center px-1 pt-1 border-b-2 transition-colors text-sm font-medium gap-1.5 ${isActive('/create-event')}`}>
                                         <PlusCircle size={18} /> Create Event
+                                    </Link>
+                                    <Link to="/assistant" className={`inline-flex items-center px-1 pt-1 border-b-2 transition-colors text-sm font-medium gap-1.5 ${isActive('/assistant')}`}>
+                                        <Sparkles size={18} className="text-blue-600" /> AI Assistant
                                     </Link>
                                 </>
                             )}
@@ -114,6 +117,9 @@ export default function Navbar() {
                                 </Link>
                                 <Link to="/create-event" onClick={() => setMobileOpen(false)} className={`flex items-center gap-2 px-3 py-2.5 rounded-lg text-sm font-medium transition-colors ${mobileLink('/create-event')}`}>
                                     <PlusCircle size={18} /> Create Event
+                                </Link>
+                                <Link to="/assistant" onClick={() => setMobileOpen(false)} className={`flex items-center gap-2 px-3 py-2.5 rounded-lg text-sm font-medium transition-colors ${mobileLink('/assistant')}`}>
+                                    <Sparkles size={18} className="text-blue-500" /> AI Assistant
                                 </Link>
                             </>
                         )}

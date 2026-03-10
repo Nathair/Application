@@ -5,6 +5,7 @@ import EventsList from './pages/EventsList';
 import EventDetails from './pages/EventDetails';
 import CreateEvent from './pages/CreateEvent';
 import MyEvents from './pages/MyEvents';
+import Assistant from './pages/Assistant';
 import Login from './pages/Login';
 import Register from './pages/Register';
 import { useAuthStore } from './store/authStore';
@@ -32,6 +33,7 @@ function App() {
             {/* Protected Routes */}
             <Route path="/create-event" element={<ProtectedRoute><CreateEvent /></ProtectedRoute>} />
             <Route path="/my-events" element={<ProtectedRoute><MyEvents /></ProtectedRoute>} />
+            <Route path="/assistant" element={<ProtectedRoute><Assistant /></ProtectedRoute>} />
           </Routes>
         </main>
       </div>
