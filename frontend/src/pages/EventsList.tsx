@@ -1,16 +1,21 @@
-import { useEffect, useState, useMemo } from 'react';
+import { useEffect, useState, useMemo, useRef } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import api from '../api/axios';
-import type { Event } from '../types';
-import { format, parseISO, isBefore, startOfDay, isSameDay } from 'date-fns';
-import { MapPin, Users, Calendar, Clock, ChevronRight, Search, Filter, X } from 'lucide-react';
+import type { Event, Tag } from '../types';
+import { formatDateTime, formatTime } from '../utils/date';
+import { parseISO, isBefore, startOfDay, isSameDay } from 'date-fns';
+import { MapPin, Users, Calendar, Clock, ChevronRight, Search, Filter, X, Tag as TagIcon } from 'lucide-react';
 import DatePicker from 'react-datepicker';
 import 'react-datepicker/dist/react-datepicker.css';
 import { useAuthStore } from '../store/authStore';
 import { Modal, type ModalProps } from '../components/Modal';
+import { getTagStyle } from '../utils/tags';
+import { useSettingsStore } from '../store/settingsStore';
+import { ChevronDown } from 'lucide-react';
 
 export default function EventsList() {
     const [events, setEvents] = useState<Event[]>([]);
+    const [allTags, setAllTags] = useState<Tag[]>([]);
     const [loading, setLoading] = useState(true);
     const { user, isAuthenticated } = useAuthStore();
     const navigate = useNavigate();
@@ -30,14 +35,23 @@ export default function EventsList() {
     const [dateFrom, setDateFrom] = useState<Date | null>(null);
     const [dateTo, setDateTo] = useState<Date | null>(null);
     const [temporalFilter, setTemporalFilter] = useState<'active' | 'past' | 'all'>('active');
+    const [selectedTagNames, setSelectedTagNames] = useState<string[]>([]);
+    const [tagInput, setTagInput] = useState('');
+    const [showSuggestions, setShowSuggestions] = useState(false);
+    const tagContainerRef = useRef<HTMLDivElement>(null);
+    const { colorEventsByTag } = useSettingsStore();
 
     useEffect(() => {
-        const fetchEvents = async () => {
+        const fetchData = async () => {
             try {
-                const res = await api.get('/events');
-                setEvents(res.data);
+                const [eventsRes, tagsRes] = await Promise.all([
+                    api.get('/events'),
+                    api.get('/events/tags')
+                ]);
+                setEvents(eventsRes.data);
+                setAllTags(tagsRes.data);
             } catch (err) {
-                console.error("Failed to fetch events", err);
+                console.error("Failed to fetch data", err);
             } finally {
                 setLoading(false);
             }
@@ -55,8 +69,19 @@ export default function EventsList() {
             }
         };
 
-        fetchEvents();
+        // Click outside listener
+        const handleClickOutside = (event: MouseEvent) => {
+            if (tagContainerRef.current && !tagContainerRef.current.contains(event.target as Node)) {
+                setShowSuggestions(false);
+            }
+        };
+
+        document.addEventListener('mousedown', handleClickOutside);
+
+        fetchData();
         fetchJoined();
+
+        return () => document.removeEventListener('mousedown', handleClickOutside);
     }, [isAuthenticated]);
 
     const handleJoinLeave = async (e: React.MouseEvent, eventId: number, action: 'join' | 'leave') => {
@@ -105,6 +130,15 @@ export default function EventsList() {
             );
         }
 
+        // Tag filter
+        if (selectedTagNames.length > 0) {
+            result = result.filter(e =>
+                selectedTagNames.some(selectedTag =>
+                    e.tags.some(t => t.name.toLowerCase() === selectedTag.toLowerCase())
+                )
+            );
+        }
+
         // Date range filter
         if (dateFrom) {
             const from = startOfDay(dateFrom);
@@ -130,15 +164,50 @@ export default function EventsList() {
             const dB = new Date(b.date).getTime();
             return temporalFilter === 'past' ? dB - dA : dA - dB;
         });
-    }, [events, searchQuery, dateFrom, dateTo, temporalFilter]);
+    }, [events, searchQuery, dateFrom, dateTo, temporalFilter, selectedTagNames]);
 
     const clearFilters = () => {
         setSearchQuery('');
         setDateFrom(null);
         setDateTo(null);
+        setSelectedTagNames([]);
     };
 
-    const hasFilters = searchQuery || dateFrom || dateTo;
+    const toggleTag = (tagName: string) => {
+        setSelectedTagNames(prev =>
+            prev.includes(tagName)
+                ? prev.filter(t => t !== tagName)
+                : [...prev, tagName]
+        );
+    };
+
+    const handleAddTag = (e: React.KeyboardEvent) => {
+        if (e.key === 'Enter' || e.key === ',') {
+            e.preventDefault();
+            const val = tagInput.trim().replace(/,/g, '');
+            if (val && val.length < 2) return;
+            if (val && !selectedTagNames.includes(val)) {
+                setSelectedTagNames([...selectedTagNames, val]);
+                setTagInput('');
+                setShowSuggestions(false);
+            }
+        }
+    };
+
+    const selectSuggestedTag = (tagName: string) => {
+        if (!selectedTagNames.includes(tagName)) {
+            setSelectedTagNames([...selectedTagNames, tagName]);
+            setTagInput('');
+            setShowSuggestions(false);
+        }
+    };
+
+    const filteredSuggestions = allTags.filter(t =>
+        t.name.toLowerCase().includes(tagInput.toLowerCase()) &&
+        !selectedTagNames.includes(t.name)
+    );
+
+    const hasFilters = searchQuery || dateFrom || dateTo || selectedTagNames.length > 0;
 
     // Shared date picker input class — same single-line style as CreateEvent
     const dpClass = "w-full py-2.5 px-3 border border-gray-200 rounded-xl text-sm outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-all bg-gray-50 focus:bg-white";
@@ -185,6 +254,76 @@ export default function EventsList() {
                         placeholder="Search by title or description..."
                         className="w-full pl-9 pr-4 py-2.5 border border-gray-200 rounded-xl text-sm outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-all bg-gray-50 focus:bg-white"
                     />
+                </div>
+
+                {/* Tags selection - Autocomplete Style */}
+                <div className="space-y-3">
+                    <div className="flex items-center gap-1.5 text-xs font-semibold text-gray-500 uppercase tracking-wider">
+                        <TagIcon size={14} /> Filter by tags
+                    </div>
+
+                    <div className="flex flex-wrap gap-2 min-h-[32px]">
+                        {selectedTagNames.map(tagName => (
+                            <span
+                                key={tagName}
+                                style={getTagStyle(tagName)}
+                                className="inline-flex items-center gap-1 px-3 py-1 rounded-full text-xs font-bold border uppercase tracking-tight shadow-sm animate-in zoom-in-95 duration-200"
+                            >
+                                {tagName}
+                                <button
+                                    type="button"
+                                    onClick={() => toggleTag(tagName)}
+                                    className="hover:opacity-70 transition-colors ml-1"
+                                >
+                                    <X size={12} />
+                                </button>
+                            </span>
+                        ))}
+                        {selectedTagNames.length === 0 && <span className="text-gray-400 text-xs italic py-1">No tags selected...</span>}
+                    </div>
+
+                    <div className="space-y-2" ref={tagContainerRef}>
+                        <div className="relative">
+                            <input
+                                type="text"
+                                value={tagInput}
+                                onChange={e => {
+                                    setTagInput(e.target.value);
+                                    setShowSuggestions(true);
+                                }}
+                                onFocus={() => setShowSuggestions(true)}
+                                onKeyDown={handleAddTag}
+                                placeholder="Type to search tags..."
+                                className="w-full pl-4 pr-10 py-2.5 border border-gray-200 rounded-xl text-sm outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-all bg-gray-50 focus:bg-white"
+                            />
+
+                            <button
+                                type="button"
+                                onClick={() => setShowSuggestions(!showSuggestions)}
+                                className="absolute inset-y-0 right-0 px-3 flex items-center text-gray-400 hover:text-blue-500 transition-colors"
+                            >
+                                <ChevronDown size={20} className={`transition-transform duration-200 ${showSuggestions ? 'rotate-180' : ''}`} />
+                            </button>
+
+                            {showSuggestions && filteredSuggestions.length > 0 && (
+                                <div className="absolute z-10 w-full mt-1 bg-white border border-gray-200 rounded-xl shadow-lg overflow-y-auto max-h-60 py-1 animate-in fade-in slide-in-from-top-1 custom-scrollbar">
+                                    {filteredSuggestions.map(tag => (
+                                        <button
+                                            key={tag.id}
+                                            type="button"
+                                            onClick={() => {
+                                                selectSuggestedTag(tag.name);
+                                            }}
+                                            className="w-full text-left px-4 py-2 text-sm hover:bg-blue-50 transition-colors flex justify-between items-center"
+                                        >
+                                            <span className="font-medium text-gray-700">{tag.name}</span>
+                                            <span className="text-[10px] text-gray-400 uppercase font-bold">In DB</span>
+                                        </button>
+                                    ))}
+                                </div>
+                            )}
+                        </div>
+                    </div>
                 </div>
 
                 {/* Date range */}
@@ -244,8 +383,16 @@ export default function EventsList() {
 
             {filteredEvents.length === 0 ? (
                 <div className="text-center py-20 bg-white rounded-2xl border border-gray-100 shadow-sm">
-                    <Calendar className="mx-auto h-12 w-12 text-gray-400 mb-4" />
-                    <h3 className="text-xl font-medium text-gray-900 mb-2">No events found</h3>
+                    {selectedTagNames.length > 0 && !searchQuery ? (
+                        <TagIcon className="mx-auto h-12 w-12 text-gray-400 mb-4" />
+                    ) : (
+                        <Calendar className="mx-auto h-12 w-12 text-gray-400 mb-4" />
+                    )}
+                    <h3 className="text-xl font-medium text-gray-900 mb-2">
+                        {selectedTagNames.length > 0 && !searchQuery && !dateFrom && !dateTo
+                            ? "No events match the selected tags."
+                            : "No events found"}
+                    </h3>
                     <p className="text-gray-500">{hasFilters ? 'Try adjusting your filters.' : 'There are currently no public events available.'}</p>
                     {hasFilters && (
                         <button onClick={clearFilters} className="mt-4 text-blue-600 hover:text-blue-700 text-sm font-medium">Clear filters</button>
@@ -259,8 +406,17 @@ export default function EventsList() {
                         const isOrganizer = user?.id === event.organizerId;
                         const isJoined = joinedEventIds.has(event.id);
 
+                        const firstTag = event.tags && event.tags.length > 0 ? event.tags[0].name : undefined;
+                        const cardStyle = (colorEventsByTag && firstTag && !isFinished)
+                            ? getTagStyle(firstTag)
+                            : {};
+
                         return (
-                            <div key={event.id} className="group bg-white flex flex-col justify-between rounded-2xl shadow-sm border border-gray-100 overflow-hidden hover:shadow-xl transition-all duration-300 hover:-translate-y-1">
+                            <div
+                                key={event.id}
+                                style={cardStyle}
+                                className="group flex flex-col justify-between rounded-2xl shadow-sm border border-black/5 overflow-hidden hover:shadow-xl transition-all duration-300 hover:-translate-y-1"
+                            >
                                 <div className="p-6 flex-grow">
                                     <div className="flex justify-between items-start mb-4">
                                         <span className="inline-flex items-center rounded-full bg-blue-50 px-2.5 py-0.5 text-xs font-semibold text-blue-700 tracking-wide uppercase">
@@ -276,7 +432,23 @@ export default function EventsList() {
                                         </div>
                                     </div>
 
-                                    <h3 className="text-xl font-bold text-gray-900 mb-3 group-hover:text-blue-600 transition-colors line-clamp-2">{event.title}</h3>
+                                    <h3 className="text-xl font-bold text-gray-900 mb-2 group-hover:text-blue-600 transition-colors line-clamp-2">{event.title}</h3>
+
+                                    {/* Tag chips */}
+                                    {event.tags && event.tags.length > 0 && (
+                                        <div className="flex flex-wrap gap-1.5 mb-3">
+                                            {event.tags.map(tag => (
+                                                <span
+                                                    key={tag.id}
+                                                    style={getTagStyle(tag.name)}
+                                                    className={`inline-flex items-center rounded-full px-2 py-0.5 text-[10px] font-bold border uppercase tracking-tight shadow-sm`}
+                                                >
+                                                    {tag.name}
+                                                </span>
+                                            ))}
+                                        </div>
+                                    )}
+
                                     <p className="text-gray-600 mb-6 line-clamp-2 text-sm">{event.description || "No description provided."}</p>
 
                                     <div className="space-y-3 mb-6">
@@ -284,11 +456,11 @@ export default function EventsList() {
                                             <Clock size={16} className="mr-2 text-gray-400 shrink-0 mt-0.5" />
                                             <div>
                                                 <p className="font-medium text-gray-700">
-                                                    {format(new Date(event.date), 'MMM d, yyyy, h:mm a')}
+                                                    {formatDateTime(event.date)}
                                                 </p>
                                                 {event.endDate && (
                                                     <p className="text-gray-500 text-xs">
-                                                        – {format(new Date(event.endDate), isSameDay(parseISO(event.date), parseISO(event.endDate)) ? 'h:mm a' : 'MMM d, yyyy, h:mm a')}
+                                                        – {isSameDay(parseISO(event.date), parseISO(event.endDate)) ? formatTime(event.endDate) : formatDateTime(event.endDate)}
                                                     </p>
                                                 )}
                                             </div>
@@ -304,7 +476,7 @@ export default function EventsList() {
                                     </div>
                                 </div>
 
-                                <div className="px-6 py-4 bg-gray-50 border-t border-gray-100 flex flex-col gap-3 group-hover:bg-blue-50 transition-colors">
+                                <div className={`px-6 py-4 border-t border-black/5 flex flex-col gap-3 transition-colors ${colorEventsByTag && firstTag && !isFinished ? 'bg-white/20' : 'bg-gray-50'}`}>
                                     <div className="flex justify-between items-center">
                                         <div className="text-xs font-medium text-gray-500">By {event.organizer?.name}</div>
                                         <Link to={`/events/${event.id}`} className="text-blue-600 text-sm font-semibold inline-flex items-center hover:text-blue-800 transition-colors">

@@ -1,10 +1,12 @@
 import { useState } from 'react';
 import { Link, useNavigate, useLocation } from 'react-router-dom';
 import { useAuthStore } from '../store/authStore';
-import { LogOut, Calendar, Home, PlusCircle, Menu, X } from 'lucide-react';
+import { LogOut, Calendar, Home, PlusCircle, Menu, X, Tag as TagIcon } from 'lucide-react';
+import { useSettingsStore } from '../store/settingsStore';
 
 export default function Navbar() {
     const { isAuthenticated, logout } = useAuthStore();
+    const { colorEventsByTag, toggleColorByTag } = useSettingsStore();
     const navigate = useNavigate();
     const location = useLocation();
     const [mobileOpen, setMobileOpen] = useState(false);
@@ -54,7 +56,22 @@ export default function Navbar() {
                     </div>
 
                     {/* Desktop right side */}
-                    <div className="hidden sm:flex sm:items-center">
+                    <div className="hidden sm:flex sm:items-center gap-4">
+                        <div className="flex items-center gap-2 mr-2">
+                            <span className="text-[10px] font-bold text-gray-400 uppercase tracking-widest hidden lg:block">Color Cards</span>
+                            <button
+                                onClick={toggleColorByTag}
+                                title={`${colorEventsByTag ? 'Disable' : 'Enable'} tag-based event coloring`}
+                                className={`relative inline-flex h-5 w-9 items-center rounded-full transition-colors focus:outline-none ${colorEventsByTag ? 'bg-blue-600' : 'bg-gray-200'
+                                    }`}
+                            >
+                                <span className="sr-only">Toggle tag coloring</span>
+                                <span
+                                    className={`inline-block h-3 w-3 transform rounded-full bg-white transition-transform ${colorEventsByTag ? 'translate-x-5' : 'translate-x-1'
+                                        }`}
+                                />
+                            </button>
+                        </div>
                         {isAuthenticated ? (
                             <button
                                 onClick={handleLogout}
@@ -101,7 +118,22 @@ export default function Navbar() {
                             </>
                         )}
                     </div>
-                    <div className="px-4 py-3 border-t border-gray-100">
+                    <div className="px-4 py-3 border-t border-gray-100 space-y-3">
+                        <div className="flex items-center justify-between px-3 py-2 rounded-lg bg-gray-50">
+                            <span className="text-sm font-medium text-gray-700 flex items-center gap-2">
+                                <TagIcon size={16} className="text-gray-400" /> Tag-based coloring
+                            </span>
+                            <button
+                                onClick={toggleColorByTag}
+                                className={`relative inline-flex h-5 w-9 items-center rounded-full transition-colors focus:outline-none ${colorEventsByTag ? 'bg-blue-600' : 'bg-gray-200'
+                                    }`}
+                            >
+                                <span
+                                    className={`inline-block h-3 w-3 transform rounded-full bg-white transition-transform ${colorEventsByTag ? 'translate-x-5' : 'translate-x-1'
+                                        }`}
+                                />
+                            </button>
+                        </div>
                         {isAuthenticated ? (
                             <button onClick={handleLogout} className="w-full flex items-center gap-2 px-3 py-2.5 rounded-lg text-sm font-medium text-red-600 hover:bg-red-50 transition-colors">
                                 <LogOut size={18} /> Logout

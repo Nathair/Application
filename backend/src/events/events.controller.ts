@@ -1,9 +1,9 @@
-import { Controller, Get, Post, Patch, Delete, Body, Param, UseGuards, Request, UsePipes, ParseIntPipe } from '@nestjs/common';
+import { Controller, Get, Post, Patch, Delete, Body, Param, UseGuards, Request, UsePipes, ParseIntPipe, Query } from '@nestjs/common';
 import { EventsService } from './events.service';
 import { JwtAuthGuard } from '../auth/jwt-auth.guard';
 import { CreateEventDto, UpdateEventDto, CreateEventSchema, UpdateEventSchema } from './dto/event.dto';
 import { YupValidationPipe } from '../common/pipes/yup-validation.pipe';
-import { ApiTags, ApiBearerAuth, ApiOperation } from '@nestjs/swagger';
+import { ApiTags, ApiBearerAuth, ApiOperation, ApiQuery } from '@nestjs/swagger';
 
 @ApiTags('events')
 @Controller('events')
@@ -12,8 +12,16 @@ export class EventsController {
 
     @Get()
     @ApiOperation({ summary: 'Fetch public events' })
-    async getPublicEvents() {
-        return this.eventsService.getPublicEvents();
+    @ApiQuery({ name: 'tags', required: false, type: String, description: 'Comma-separated tags' })
+    async getPublicEvents(@Query('tags') tags?: string) {
+        const tagList = tags ? tags.split(',') : undefined;
+        return this.eventsService.getPublicEvents(tagList);
+    }
+
+    @Get('tags')
+    @ApiOperation({ summary: 'Get all tags' })
+    async getAllTags() {
+        return this.eventsService.getAllTags();
     }
 
     @Get(':id')

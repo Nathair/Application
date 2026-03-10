@@ -1,20 +1,50 @@
 import { useState, useEffect } from 'react';
 import api from '../api/axios';
 import type { Event } from '../types';
+import { formatTime, formatMonthYear, formatDayMonth, formatDateTime } from '../utils/date';
 import {
-    format, startOfWeek, addDays, startOfMonth, endOfMonth,
+    startOfWeek, addDays, startOfMonth, endOfMonth,
     endOfWeek, isSameMonth, isSameDay, addMonths, subMonths,
-    addWeeks, subWeeks, parseISO, isPast
+    addWeeks, subWeeks, parseISO, isPast, format
 } from 'date-fns';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import { CalendarIcon, ChevronLeft, ChevronRight, Clock, MapPin, User as UserIcon, Users as UsersIcon, Edit3, LogOut } from 'lucide-react';
 import { useAuthStore } from '../store/authStore';
+import { useSettingsStore } from '../store/settingsStore';
 import { Modal, type ModalProps } from '../components/Modal';
+import { getTagStyle } from '../utils/tags';
+
+const EventPill = ({ ev, colorEventsByTag, navigate }: { ev: Event, colorEventsByTag: boolean, navigate: any }) => {
+    const past = isPast(new Date(ev.date));
+    const firstTag = ev.tags && ev.tags.length > 0 ? ev.tags[0].name : undefined;
+
+    let style: React.CSSProperties = (colorEventsByTag && firstTag) ? getTagStyle(firstTag) : {};
+    if (past) {
+        style = {
+            backgroundColor: '#f3f4f6',
+            color: '#6b7280',
+            borderColor: '#e5e7eb'
+        };
+    }
+
+    return (
+        <div
+            onClick={(e) => { e.stopPropagation(); navigate(`/events/${ev.id}`); }}
+            style={style}
+            className="text-[10px] px-2 py-0.5 rounded-md cursor-pointer border truncate font-bold transition-all hover:brightness-90 shadow-sm"
+            title={ev.title + (firstTag ? ` (#${firstTag})` : '')}
+        >
+            <span className="opacity-70 mr-1">{formatTime(ev.date)}</span>
+            {ev.title}
+        </div>
+    );
+};
 
 export default function MyEvents() {
     const [searchParams, setSearchParams] = useSearchParams();
     const navigate = useNavigate();
     const { user } = useAuthStore();
+    const { colorEventsByTag } = useSettingsStore();
 
     const [events, setEvents] = useState<Event[]>([]);
     const [loading, setLoading] = useState(true);
@@ -35,8 +65,6 @@ export default function MyEvents() {
         const r = searchParams.get('role');
         return (r === 'all' || r === 'creator' || r === 'participant') ? r : 'all';
     });
-
-    // Modal state
     const [modal, setModal] = useState<{
         open: boolean; type: ModalProps['type']; title: string; message: string; onConfirm?: () => void;
     }>({ open: false, type: 'info', title: '', message: '' });
@@ -46,36 +74,59 @@ export default function MyEvents() {
     };
 
     useEffect(() => {
-        const params: any = {
-            view,
-            role: roleFilter,
-            temporal: temporalFilter,
-            date: currentDate.toISOString()
-        };
-        setSearchParams(params, { replace: true });
-    }, [view, roleFilter, temporalFilter, currentDate, setSearchParams]);
+        const currentView = searchParams.get('view');
+        const currentRole = searchParams.get('role');
+        const currentTemporal = searchParams.get('temporal');
+        const currentDateStr = searchParams.get('date');
 
-    const fetchEvents = () => {
-        setLoading(true);
+        // Use a stable date format (Y-M-D) or just toISOString but compare carefully
+        const newDateStr = currentDate.toISOString();
+
+        const needsUpdate = view !== currentView ||
+            roleFilter !== currentRole ||
+            temporalFilter !== currentTemporal ||
+            (currentDateStr && new Date(currentDateStr).getTime() !== currentDate.getTime());
+
+        if (needsUpdate) {
+            setSearchParams({
+                view,
+                role: roleFilter,
+                temporal: temporalFilter,
+                date: newDateStr
+            }, { replace: true });
+        }
+    }, [view, roleFilter, temporalFilter, currentDate, setSearchParams, searchParams]);
+
+    const fetchEvents = (silent = false) => {
+        if (!silent) setLoading(true);
         api.get('/users/me/events')
             .then(res => setEvents(res.data))
             .catch(console.error)
-            .finally(() => setLoading(false));
+            .finally(() => {
+                if (!silent) setLoading(false);
+            });
     };
 
     useEffect(() => {
         fetchEvents();
     }, []);
 
-    const handleLeave = (eventId: number) => {
-        showModal('confirm', 'Leave Event', 'Are you sure you want to leave this event?', async () => {
-            try {
-                await api.post(`/events/${eventId}/leave`);
-                fetchEvents();
-            } catch (err: any) {
-                showModal('error', 'Error', err.response?.data?.message || 'Failed to leave event');
-            }
-        });
+    const handleLeave = async (eventId: number) => {
+        try {
+            await api.post(`/events/${eventId}/leave`);
+            fetchEvents(true); // Silent update
+        } catch (err: any) {
+            showModal('error', 'Error', err.response?.data?.message || 'Failed to leave event');
+        }
+    };
+
+    const handleJoin = async (eventId: number) => {
+        try {
+            await api.post(`/events/${eventId}/join`);
+            fetchEvents(true); // Silent update
+        } catch (err: any) {
+            showModal('error', 'Error', err.response?.data?.message || 'Failed to join event');
+        }
     };
 
     if (loading) {
@@ -99,6 +150,7 @@ export default function MyEvents() {
         );
     }
 
+
     const filteredEvents = events.filter(ev => {
         if (roleFilter === 'creator') return ev.organizerId === user?.id;
         if (roleFilter === 'participant') return ev.participants?.some(p => p.user.id === user?.id);
@@ -107,23 +159,6 @@ export default function MyEvents() {
 
     const eventsOnDay = (day: Date) =>
         filteredEvents.filter(e => isSameDay(parseISO(e.date), day));
-
-    const EventPill = ({ ev }: { ev: Event }) => {
-        const past = isPast(new Date(ev.date));
-        return (
-            <div
-                onClick={() => navigate(`/events/${ev.id}`)}
-                className={`text-xs px-2 py-1 rounded-md cursor-pointer border truncate font-medium transition-all hover:-translate-y-0.5 shadow-sm ${past
-                    ? 'bg-gray-100 text-gray-500 border-gray-200 opacity-70'
-                    : 'bg-blue-50 text-blue-700 border-blue-200 hover:bg-blue-100'
-                    }`}
-                title={ev.title}
-            >
-                <span className="opacity-70 mr-1">{format(new Date(ev.date), 'HH:mm')}</span>
-                {ev.title}
-            </div>
-        );
-    };
 
     // ── Month View ──────────────────────────────────────────────────────────────
     const renderMonth = () => {
@@ -151,7 +186,7 @@ export default function MyEvents() {
                             </span>
                         </div>
                         <div className="space-y-1">
-                            {dayEvs.slice(0, 3).map(ev => <EventPill key={ev.id} ev={ev} />)}
+                            {dayEvs.slice(0, 3).map(ev => <EventPill key={ev.id} ev={ev} colorEventsByTag={colorEventsByTag} navigate={navigate} />)}
                             {dayEvs.length > 3 && (
                                 <p className="text-xs text-gray-400 font-medium px-1">+{dayEvs.length - 3} more</p>
                             )}
@@ -203,7 +238,7 @@ export default function MyEvents() {
                                 {dayEvs.length === 0 ? (
                                     <p className="text-xs text-gray-300 text-center mt-4">–</p>
                                 ) : (
-                                    dayEvs.map(ev => <EventPill key={ev.id} ev={ev} />)
+                                    dayEvs.map(ev => <EventPill key={ev.id} ev={ev} colorEventsByTag={colorEventsByTag} navigate={navigate} />)
                                 )}
                             </div>
                         );
@@ -249,31 +284,53 @@ export default function MyEvents() {
                             const isParticipant = ev.participants?.some(p => p.user.id === user?.id);
                             const past = isPast(new Date(ev.date));
 
+                            const cardStyle = (colorEventsByTag && ev.tags && ev.tags.length > 0 && !past)
+                                ? { ...getTagStyle(ev.tags[0].name), borderLeftWidth: '4px' }
+                                : {};
+
                             return (
-                                <div key={ev.id} className="p-6 hover:bg-gray-50 transition-colors flex flex-col md:flex-row md:items-center justify-between gap-4">
+                                <div
+                                    key={ev.id}
+                                    style={cardStyle}
+                                    className={`p-6 hover:brightness-95 transition-all flex flex-col md:flex-row md:items-center justify-between gap-4 border-b border-gray-100 last:border-b-0`}
+                                >
                                     <div className="flex items-start gap-4">
-                                        <div className="bg-blue-50 border border-blue-100 rounded-xl p-3 flex flex-col items-center min-w-[80px] text-blue-700 shrink-0">
+                                        <div className="bg-white/50 backdrop-blur-sm border border-black/5 rounded-xl p-3 flex flex-col items-center min-w-[80px] text-gray-700 shrink-0 shadow-sm">
                                             <span className="text-xs font-bold uppercase tracking-wider">{format(new Date(ev.date), 'MMM')}</span>
                                             <span className="text-2xl font-black">{format(new Date(ev.date), 'dd')}</span>
                                         </div>
                                         <div>
-                                            <h3 className="text-lg font-bold text-gray-900 cursor-pointer hover:text-blue-600 transition-colors" onClick={() => navigate(`/events/${ev.id}`)}>
+                                            <h3 className="text-lg font-bold text-gray-900 cursor-pointer hover:underline" onClick={() => navigate(`/events/${ev.id}`)}>
                                                 {ev.title}
                                             </h3>
-                                            <div className="flex flex-wrap items-center gap-x-4 gap-y-1 text-sm text-gray-500 mt-1">
+                                            <div className="flex flex-wrap items-center gap-x-4 gap-y-2 text-sm text-gray-600 mt-1">
                                                 <span className="flex items-start">
                                                     <Clock size={14} className="mr-1.5 mt-0.5 shrink-0" />
                                                     <div className="flex flex-col">
-                                                        <span>{format(new Date(ev.date), 'h:mm a')}</span>
+                                                        <span>{formatTime(ev.date)}</span>
                                                         {ev.endDate && (
-                                                            <span className="text-xs text-gray-400">
-                                                                – {format(new Date(ev.endDate), isSameDay(parseISO(ev.date), parseISO(ev.endDate)) ? 'h:mm a' : 'MMM d, h:mm a')}
+                                                            <span className="text-xs opacity-70">
+                                                                – {isSameDay(parseISO(ev.date), parseISO(ev.endDate)) ? formatTime(ev.endDate) : formatDateTime(ev.endDate)}
                                                             </span>
                                                         )}
                                                     </div>
                                                 </span>
                                                 <span className="flex items-center"><MapPin size={14} className="mr-1.5" />{ev.location}</span>
                                             </div>
+                                            {/* Tags in list view */}
+                                            {ev.tags && ev.tags.length > 0 && (
+                                                <div className="flex flex-wrap gap-1">
+                                                    {ev.tags.map(tag => (
+                                                        <span
+                                                            key={tag.id}
+                                                            style={getTagStyle(tag.name)}
+                                                            className={`px-2 py-0.5 rounded-full text-[10px] font-bold border uppercase tracking-tight shadow-sm`}
+                                                        >
+                                                            {tag.name}
+                                                        </span>
+                                                    ))}
+                                                </div>
+                                            )}
                                         </div>
                                     </div>
 
@@ -286,13 +343,22 @@ export default function MyEvents() {
                                                 <Edit3 size={14} /> Edit
                                             </button>
                                         )}
-                                        {isParticipant && !past && (
-                                            <button
-                                                onClick={(e) => { e.stopPropagation(); handleLeave(ev.id); }}
-                                                className="whitespace-nowrap text-red-600 hover:text-red-800 text-sm font-semibold border border-red-200 rounded-lg px-4 py-2 hover:bg-red-50 transition-colors flex items-center gap-1.5"
-                                            >
-                                                <LogOut size={14} /> Leave
-                                            </button>
+                                        {!past && (
+                                            isParticipant ? (
+                                                <button
+                                                    onClick={(e) => { e.stopPropagation(); handleLeave(ev.id); }}
+                                                    className="whitespace-nowrap text-red-600 hover:text-red-800 text-sm font-semibold border border-red-200 rounded-lg px-4 py-2 hover:bg-red-50 transition-colors flex items-center gap-1.5"
+                                                >
+                                                    <LogOut size={14} /> Leave
+                                                </button>
+                                            ) : (
+                                                <button
+                                                    onClick={(e) => { e.stopPropagation(); handleJoin(ev.id); }}
+                                                    className="whitespace-nowrap bg-blue-600 hover:bg-blue-700 text-white text-sm font-semibold rounded-lg px-4 py-2 transition-all shadow-sm flex items-center gap-1.5"
+                                                >
+                                                    <UsersIcon size={14} /> Join
+                                                </button>
+                                            )
                                         )}
                                         <button onClick={() => navigate(`/events/${ev.id}`)} className="whitespace-nowrap text-blue-600 hover:text-blue-800 text-sm font-semibold border border-blue-200 rounded-lg px-4 py-2 hover:bg-blue-50 transition-colors">
                                             View Details
@@ -309,9 +375,9 @@ export default function MyEvents() {
 
     // ── Navigation title ────────────────────────────────────────────────────────
     const navTitle = view === 'month'
-        ? format(currentDate, 'MMMM yyyy')
+        ? formatMonthYear(currentDate)
         : view === 'week'
-            ? `${format(startOfWeek(currentDate), 'MMM d')} – ${format(endOfWeek(currentDate), 'MMM d, yyyy')}`
+            ? `${formatDayMonth(startOfWeek(currentDate))} – ${formatDayMonth(endOfWeek(currentDate))}, ${format(endOfWeek(currentDate), 'yyyy')}`
             : 'All Events';
 
     const prev = () => {

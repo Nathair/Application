@@ -14,21 +14,35 @@ export class UsersController {
     @ApiOperation({ summary: 'Fetch user\'s events (calendar)' })
     async getMyEvents(@Request() req: any) {
         const userId = req.user.id;
-        const organized = await this.prisma.event.findMany({
+        const organized: any[] = await this.prisma.event.findMany({
             where: { organizerId: userId },
-            include: { participants: { include: { user: { select: { id: true, name: true } } } } },
+            include: {
+                participants: { include: { user: { select: { id: true, name: true } } } },
+                tags: true
+            },
         });
 
-        const participations = await this.prisma.participant.findMany({
+        const participations: any[] = await this.prisma.participant.findMany({
             where: { userId },
-            include: { event: { include: { participants: { include: { user: { select: { id: true, name: true } } } } } } },
+            include: {
+                event: {
+                    include: {
+                        participants: { include: { user: { select: { id: true, name: true } } } },
+                        tags: true
+                    }
+                }
+            },
         });
         const participated = participations.map(p => p.event);
 
         const allEventsMap = new Map();
         organized.forEach(e => allEventsMap.set(e.id, e));
-        participated.forEach(e => allEventsMap.set(e.id, e));
+        participated.forEach(e => {
+            if (e) allEventsMap.set(e.id, e);
+        });
 
-        return Array.from(allEventsMap.values()).sort((a, b) => a.date.getTime() - b.date.getTime());
+        return Array.from(allEventsMap.values()).sort((a: any, b: any) =>
+            new Date(a.date).getTime() - new Date(b.date).getTime()
+        );
     }
 }
