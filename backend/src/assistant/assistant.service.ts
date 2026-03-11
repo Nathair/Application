@@ -55,7 +55,8 @@ export class AssistantService {
                     date: e?.date,
                     location: e?.location,
                     tags: e?.tags.map((t: any) => t.name),
-                    organizer: e?.organizer?.name
+                    organizer: e?.organizer?.name,
+                    attendees: e?.participants?.map((p: any) => p.user.name) || []
                 }))
             },
             discoverableEvents: publicEvents.map((e: any) => ({
