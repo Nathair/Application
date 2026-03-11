@@ -7,6 +7,8 @@ A full-stack web application for creating, discovering, and managing events. Bui
 ---
 **🌐 API Documentation:** [https://eventify.nathair.dev/api/docs](https://eventify.nathair.dev/api/docs)
 ---
+**🌐 Storybook React:** [https://eventify.nathair.dev/storybook](https://eventify.nathair.dev/storybook)
+---
 ---
 
 ## 🚀 Features
@@ -20,6 +22,9 @@ A full-stack web application for creating, discovering, and managing events. Bui
     - "No Limit" indicators for unlimited events.
     - Automated "Finished" status logic based on event start time.
     - Restricted editing and joining for past events.
+- **Tagging System**: Multi-tag classification (up to 5 tags) with case-insensitive search and filtering.
+- **AI Assistant**: Natural language question answering about events, attendees, and schedule using RAG-like context provided by the backend.
+- **UI Component Library (Storybook)**: Fully isolated and documented UI components (Button, Input, Modal, Textarea) with multiple states and variants.
 - **Responsive Design**: Premium dark/light themes with glassmorphism and smooth animations.
 
 ## 🛠 Tech Stack
@@ -31,12 +36,14 @@ A full-stack web application for creating, discovering, and managing events. Bui
 - **Forms & Validation**: [React Hook Form](https://react-hook-form.com/) + [Yup](https://github.com/jquense/yup)
 - **Dates**: [date-fns](https://date-fns.org/)
 - **Icons**: [Lucide React](https://lucide.dev/)
+- **Documentation**: [Storybook](https://storybook.js.org/)
 
 ### Backend
 - **Framework**: [NestJS](https://nestjs.com/)
 - **Database**: [PostgreSQL](https://www.postgresql.org/)
 - **ORM**: [Prisma](https://www.prisma.io/)
 - **Auth**: [Passport JWT](http://www.passportjs.org/packages/passport-jwt/)
+- **AI Integration**: OpenAI-compatible API (Groq/Mistral)
 - **Documentation**: [Swagger](https://swagger.io/)
 
 ---
@@ -47,9 +54,9 @@ A full-stack web application for creating, discovering, and managing events. Bui
 ├── frontend/             # React (Vite) application
 │   ├── src/
 │   │   ├── api/          # Axios interceptors for token refresh
-│   │   ├── components/   # Reusable UI components
+│   │   ├── components/   # Reusable UI components + Storybook stories
 │   │   ├── pages/        # Main application views
-│   │   ├── store/        # Zustand auth state
+│   │   ├── store/        # Zustand state (Auth, Settings, Assistant)
 │   │   └── types/        # TypeScript interfaces
 ├── backend/              # NestJS API
 │   ├── src/
@@ -114,6 +121,13 @@ cd frontend
 npm run dev
 ```
 Open your browser at: `http://localhost:5173`
+
+### Run Storybook
+```bash
+cd frontend
+npm run storybook
+```
+Open Storybook at: `http://localhost:6006`
 
 ---
 
