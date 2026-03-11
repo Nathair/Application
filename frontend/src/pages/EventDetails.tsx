@@ -9,6 +9,7 @@ import { MapPin, Users, CalendarDays, Clock, ShieldCheck, ArrowLeft, Trash2, Edi
 import { Modal, type ModalProps } from '../components/Modal';
 import { getTagStyle } from '../utils/tags';
 import { useSettingsStore } from '../store/settingsStore';
+import { Button } from '../components/Button';
 
 // ── Main Component ─────────────────────────────────────────────────────────────
 export default function EventDetails() {
@@ -94,9 +95,15 @@ export default function EventDetails() {
             />
 
             <div className="max-w-4xl mx-auto space-y-6 animate-in slide-in-from-bottom-4 duration-500">
-                <button onClick={() => navigate(-1)} className="text-sm text-gray-500 hover:text-gray-900 flex items-center mb-6 transition-colors">
-                    <ArrowLeft size={16} className="mr-1" /> Back
-                </button>
+                <Button
+                    variant="ghost"
+                    size="sm"
+                    onClick={() => navigate(-1)}
+                    icon={<ArrowLeft size={16} />}
+                    className="mb-6 !text-gray-500 hover:!text-gray-900"
+                >
+                    Back
+                </Button>
 
                 <div
                     style={(colorEventsByTag && event.tags && event.tags.length > 0 && !isFinished) ? getTagStyle(event.tags[0].name) : {}}
@@ -222,21 +229,23 @@ export default function EventDetails() {
                                 {/* Join/Leave */}
                                 <div className="pt-2">
                                     {isParticipant ? (
-                                        <button
+                                        <Button
+                                            variant="outline"
                                             onClick={() => handleJoinLeave('leave')}
                                             disabled={isFinished}
-                                            className="w-full bg-white hover:bg-red-50 disabled:opacity-50 disabled:bg-gray-50 disabled:text-gray-400 text-red-600 font-semibold py-3 px-4 border-2 border-red-200 rounded-xl transition-all shadow-sm flex justify-center items-center"
+                                            className="w-full !text-red-600 !border-red-200 hover:!bg-red-50"
                                         >
                                             Leave Event
-                                        </button>
+                                        </Button>
                                     ) : (
-                                        <button
+                                        <Button
                                             onClick={() => handleJoinLeave('join')}
                                             disabled={isFull || isFinished}
-                                            className="w-full bg-blue-600 hover:bg-blue-700 disabled:bg-gray-300 disabled:text-gray-500 text-white font-semibold py-3 px-4 rounded-xl transition-all shadow-md hover:shadow-lg disabled:shadow-none flex justify-center items-center text-lg"
+                                            className="w-full"
+                                            size="lg"
                                         >
                                             {isFinished ? 'Event Finished' : isFull ? 'Event is Full' : 'Join Event'}
-                                        </button>
+                                        </Button>
                                     )}
                                 </div>
 
@@ -244,13 +253,23 @@ export default function EventDetails() {
                                 {isOrganizer && (
                                     <div className="pt-4 mt-2 border-t border-gray-200 flex flex-col gap-3">
                                         {!isFinished && (
-                                            <button onClick={() => navigate(`/create-event?edit=${id}`)} className="w-full bg-indigo-50 hover:bg-indigo-100 text-indigo-700 font-semibold py-3 px-4 rounded-xl transition-all border border-indigo-200 flex justify-center items-center">
-                                                <Edit3 size={18} className="mr-2" /> Edit Details
-                                            </button>
+                                            <Button
+                                                variant="secondary"
+                                                onClick={() => navigate(`/create-event?edit=${id}`)}
+                                                icon={<Edit3 size={18} />}
+                                                className="w-full"
+                                            >
+                                                Edit Details
+                                            </Button>
                                         )}
-                                        <button onClick={handleDelete} className="w-full bg-white hover:bg-red-50 text-red-600 font-semibold py-3 px-4 border-2 border-red-200 rounded-xl transition-all shadow-sm flex justify-center items-center">
-                                            <Trash2 size={18} className="mr-2" /> Delete Event
-                                        </button>
+                                        <Button
+                                            variant="outline"
+                                            onClick={handleDelete}
+                                            icon={<Trash2 size={18} />}
+                                            className="w-full !text-red-600 !border-red-200 hover:!bg-red-50"
+                                        >
+                                            Delete Event
+                                        </Button>
                                     </div>
                                 )}
                             </div>

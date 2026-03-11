@@ -3,6 +3,7 @@ import { Link, useNavigate, useLocation } from 'react-router-dom';
 import { useAuthStore } from '../store/authStore';
 import { LogOut, Calendar, Home, PlusCircle, Menu, X, Tag as TagIcon, Sparkles } from 'lucide-react';
 import { useSettingsStore } from '../store/settingsStore';
+import { Button } from './Button';
 
 export default function Navbar() {
     const { isAuthenticated, logout } = useAuthStore();
@@ -76,16 +77,30 @@ export default function Navbar() {
                             </button>
                         </div>
                         {isAuthenticated ? (
-                            <button
+                            <Button
+                                variant="outline"
+                                size="sm"
                                 onClick={handleLogout}
-                                className="inline-flex items-center gap-2 bg-gray-50 hover:bg-gray-100 text-gray-700 px-4 py-2 rounded-lg text-sm font-medium transition-colors border border-gray-200"
+                                icon={<LogOut size={16} />}
+                                className="!bg-gray-50 hover:!bg-gray-100 !text-gray-700 !border-gray-200"
                             >
-                                <LogOut size={16} /> Logout
-                            </button>
+                                Logout
+                            </Button>
                         ) : (
                             <div className="flex gap-3">
-                                <Link to="/login" className="text-gray-700 hover:text-blue-600 px-3 py-2 rounded-md text-sm font-medium transition-colors">Login</Link>
-                                <Link to="/register" className="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-lg text-sm font-medium transition-colors shadow-sm">Sign up</Link>
+                                <Button
+                                    variant="ghost"
+                                    size="sm"
+                                    onClick={() => navigate('/login')}
+                                >
+                                    Login
+                                </Button>
+                                <Button
+                                    size="sm"
+                                    onClick={() => navigate('/register')}
+                                >
+                                    Sign up
+                                </Button>
                             </div>
                         )}
                     </div>
@@ -141,13 +156,27 @@ export default function Navbar() {
                             </button>
                         </div>
                         {isAuthenticated ? (
-                            <button onClick={handleLogout} className="w-full flex items-center gap-2 px-3 py-2.5 rounded-lg text-sm font-medium text-red-600 hover:bg-red-50 transition-colors">
-                                <LogOut size={18} /> Logout
-                            </button>
+                            <Button
+                                variant="outline"
+                                onClick={handleLogout}
+                                icon={<LogOut size={18} />}
+                                className="w-full !text-red-600 !border-red-50 hover:!bg-red-50 !justify-start"
+                            >
+                                Logout
+                            </Button>
                         ) : (
                             <div className="grid grid-cols-2 gap-2">
-                                <Link to="/login" onClick={() => setMobileOpen(false)} className="text-center text-gray-700 hover:text-blue-600 px-3 py-2.5 rounded-lg text-sm font-medium border border-gray-200 hover:bg-gray-50 transition-colors">Login</Link>
-                                <Link to="/register" onClick={() => setMobileOpen(false)} className="text-center bg-blue-600 hover:bg-blue-700 text-white px-3 py-2.5 rounded-lg text-sm font-medium transition-colors shadow-sm">Sign up</Link>
+                                <Button
+                                    variant="outline"
+                                    onClick={() => { setMobileOpen(false); navigate('/login'); }}
+                                >
+                                    Login
+                                </Button>
+                                <Button
+                                    onClick={() => { setMobileOpen(false); navigate('/register'); }}
+                                >
+                                    Sign up
+                                </Button>
                             </div>
                         )}
                     </div>

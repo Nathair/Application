@@ -12,6 +12,10 @@ import { Modal, type ModalProps } from '../components/Modal';
 import { getTagStyle } from '../utils/tags';
 import { type Tag } from '../types';
 import { useSettingsStore } from '../store/settingsStore';
+import { Button } from '../components/Button';
+import { Input } from '../components/Input';
+import { Textarea } from '../components/Textarea';
+import { Save, Send } from 'lucide-react';
 
 const roundToNext15Minutes = (date: Date) => {
     const minutes = 15;
@@ -202,30 +206,22 @@ export default function CreateEvent() {
                     <div className="p-8">
                         <form onSubmit={handleSubmit(onSubmit)} className="space-y-6">
                             {/* Title */}
-                            <div>
-                                <label className="flex items-center text-sm font-semibold text-gray-700 mb-1.5">
-                                    <Type size={16} className="mr-2 text-gray-400" /> Event Title *
-                                </label>
-                                <input
-                                    {...register('title')}
-                                    className="input-field py-3 px-4 text-base focus:ring-2 bg-gray-50 focus:bg-white transition-colors"
-                                    placeholder="e.g. Summer Tech Meetup 2026"
-                                />
-                                {errors.title?.message && <p className="text-red-500 text-xs mt-1.5 font-medium">{String(errors.title.message)}</p>}
-                            </div>
+                            <Input
+                                label="Event Title *"
+                                icon={<Type size={16} />}
+                                placeholder="e.g. Summer Tech Meetup 2026"
+                                error={errors.title?.message as string}
+                                {...register('title')}
+                            />
 
                             {/* Description */}
-                            <div>
-                                <label className="flex items-center text-sm font-semibold text-gray-700 mb-1.5">
-                                    <AlignLeft size={16} className="mr-2 text-gray-400" /> Description
-                                </label>
-                                <textarea
-                                    {...register('description')}
-                                    rows={4}
-                                    className="input-field py-3 px-4 text-base focus:ring-2 bg-gray-50 focus:bg-white transition-colors resize-y"
-                                    placeholder="What is this event about?"
-                                />
-                            </div>
+                            <Textarea
+                                label="Description"
+                                icon={<AlignLeft size={16} />}
+                                placeholder="What is this event about?"
+                                rows={4}
+                                {...register('description')}
+                            />
 
                             {/* Start Date (required) + End Date (optional) */}
                             <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
@@ -304,17 +300,13 @@ export default function CreateEvent() {
                             </div>
 
                             {/* Location */}
-                            <div>
-                                <label className="flex items-center text-sm font-semibold text-gray-700 mb-1.5">
-                                    <MapPin size={16} className="mr-2 text-gray-400" /> Location *
-                                </label>
-                                <input
-                                    {...register('location')}
-                                    className="input-field py-3 px-4 text-base focus:ring-2 bg-gray-50 focus:bg-white transition-colors"
-                                    placeholder="e.g. 123 Main St, City"
-                                />
-                                {errors.location?.message && <p className="text-red-500 text-xs mt-1.5 font-medium">{String(errors.location.message)}</p>}
-                            </div>
+                            <Input
+                                label="Location *"
+                                icon={<MapPin size={16} />}
+                                placeholder="e.g. 123 Main St, City"
+                                error={errors.location?.message as string}
+                                {...register('location')}
+                            />
 
                             {/* Capacity */}
                             <div>
@@ -325,7 +317,7 @@ export default function CreateEvent() {
                                     control={control}
                                     name="capacity"
                                     render={({ field }) => (
-                                        <input
+                                        <Input
                                             type="number"
                                             value={field.value ?? ''}
                                             onKeyDown={(e) => {
@@ -342,12 +334,11 @@ export default function CreateEvent() {
                                                     field.onChange(val);
                                                 }
                                             }}
-                                            className="input-field py-3 px-4 text-base focus:ring-2 bg-gray-50 focus:bg-white transition-colors"
                                             placeholder={!field.value && field.value !== 0 ? "Set visitor limit or leave for no limit" : ""}
+                                            error={errors.capacity?.message as string}
                                         />
                                     )}
                                 />
-                                {errors.capacity?.message && <p className="text-red-500 text-xs mt-1.5 font-medium">{String(errors.capacity.message)}</p>}
                             </div>
 
                             {/* Tags */}
@@ -460,22 +451,21 @@ export default function CreateEvent() {
 
                             {/* Actions */}
                             <div className="pt-6 border-t border-gray-100 flex justify-end gap-3">
-                                <button
+                                <Button
+                                    variant="outline"
                                     type="button"
                                     onClick={() => navigate(-1)}
-                                    className="px-6 py-3 border-2 border-gray-200 text-gray-700 font-semibold rounded-xl hover:bg-gray-50 transition-colors"
                                     disabled={loading}
                                 >
                                     Cancel
-                                </button>
-                                <button
+                                </Button>
+                                <Button
                                     type="submit"
-                                    className="px-8 py-3 bg-blue-600 text-white font-semibold rounded-xl hover:bg-blue-700 shadow-sm hover:shadow transition-all disabled:opacity-70 disabled:cursor-not-allowed flex items-center gap-2"
-                                    disabled={loading}
+                                    isLoading={loading}
+                                    icon={editId ? <Save size={18} /> : <Send size={18} />}
                                 >
-                                    {loading && <div className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin"></div>}
                                     {editId ? 'Save Changes' : 'Publish Event'}
-                                </button>
+                                </Button>
                             </div>
                         </form>
                     </div>

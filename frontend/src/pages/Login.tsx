@@ -5,6 +5,9 @@ import * as yup from 'yup';
 import { useNavigate, Link } from 'react-router-dom';
 import api from '../api/axios';
 import { useAuthStore } from '../store/authStore';
+import { Button } from '../components/Button';
+import { Input } from '../components/Input';
+import { Mail, Lock, LogIn } from 'lucide-react';
 
 const schema = yup.object({
     email: yup.string().email('Invalid email').required('Email is required'),
@@ -42,30 +45,27 @@ export default function Login() {
                 )}
 
                 <form onSubmit={handleSubmit(onSubmit)} className="space-y-5">
-                    <div>
-                        <label className="block text-sm font-medium text-gray-700 mb-1">Email</label>
-                        <input
-                            {...register('email')}
-                            className="w-full rounded-lg border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 py-2.5 px-3 border outline-none"
-                            placeholder="you@example.com"
-                        />
-                        {errors.email?.message && <p className="text-red-500 text-xs mt-1">{String(errors.email.message)}</p>}
-                    </div>
+                    <Input
+                        label="Email"
+                        type="email"
+                        icon={<Mail size={16} />}
+                        placeholder="you@example.com"
+                        error={errors.email?.message as string}
+                        {...register('email')}
+                    />
 
-                    <div>
-                        <label className="block text-sm font-medium text-gray-700 mb-1">Password</label>
-                        <input
-                            {...register('password')}
-                            type="password"
-                            className="w-full rounded-lg border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 py-2.5 px-3 border outline-none"
-                            placeholder="••••••••"
-                        />
-                        {errors.password?.message && <p className="text-red-500 text-xs mt-1">{String(errors.password.message)}</p>}
-                    </div>
+                    <Input
+                        label="Password"
+                        type="password"
+                        icon={<Lock size={16} />}
+                        placeholder="••••••••"
+                        error={errors.password?.message as string}
+                        {...register('password')}
+                    />
 
-                    <button type="submit" className="w-full bg-blue-600 hover:bg-blue-700 text-white font-medium py-2.5 rounded-lg shadow-sm transition-all mt-4 text-base tracking-wide">
+                    <Button type="submit" className="w-full mt-4" icon={<LogIn size={18} />}>
                         Login
-                    </button>
+                    </Button>
                 </form>
 
                 <p className="mt-8 text-center text-sm text-gray-600">

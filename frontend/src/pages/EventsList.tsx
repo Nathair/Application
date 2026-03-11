@@ -1,17 +1,19 @@
 import { useEffect, useState, useMemo, useRef } from 'react';
-import { Link, useNavigate } from 'react-router-dom';
+import { useNavigate } from 'react-router-dom';
 import api from '../api/axios';
 import type { Event, Tag } from '../types';
 import { formatDateTime, formatTime } from '../utils/date';
 import { parseISO, isBefore, startOfDay, isSameDay } from 'date-fns';
-import { MapPin, Users, Calendar, Clock, ChevronRight, Search, Filter, X, Tag as TagIcon } from 'lucide-react';
+import { MapPin, Users, Calendar, Clock, Search, Filter, X, Tag as TagIcon } from 'lucide-react';
 import DatePicker from 'react-datepicker';
 import 'react-datepicker/dist/react-datepicker.css';
 import { useAuthStore } from '../store/authStore';
 import { Modal, type ModalProps } from '../components/Modal';
 import { getTagStyle } from '../utils/tags';
 import { useSettingsStore } from '../store/settingsStore';
-import { ChevronDown } from 'lucide-react';
+import { ChevronDown, ExternalLink } from 'lucide-react';
+import { Button } from '../components/Button';
+import { Input } from '../components/Input';
 
 export default function EventsList() {
     const [events, setEvents] = useState<Event[]>([]);
@@ -245,16 +247,12 @@ export default function EventsList() {
                 </div>
 
                 {/* Text search */}
-                <div className="relative">
-                    <Search size={16} className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 pointer-events-none" />
-                    <input
-                        type="text"
-                        value={searchQuery}
-                        onChange={e => setSearchQuery(e.target.value)}
-                        placeholder="Search by title or description..."
-                        className="w-full pl-9 pr-4 py-2.5 border border-gray-200 rounded-xl text-sm outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-all bg-gray-50 focus:bg-white"
-                    />
-                </div>
+                <Input
+                    value={searchQuery}
+                    onChange={e => setSearchQuery(e.target.value)}
+                    placeholder="Search by title or description..."
+                    icon={<Search size={16} />}
+                />
 
                 {/* Tags selection - Autocomplete Style */}
                 <div className="space-y-3">
@@ -284,8 +282,7 @@ export default function EventsList() {
 
                     <div className="space-y-2" ref={tagContainerRef}>
                         <div className="relative">
-                            <input
-                                type="text"
+                            <Input
                                 value={tagInput}
                                 onChange={e => {
                                     setTagInput(e.target.value);
@@ -294,7 +291,7 @@ export default function EventsList() {
                                 onFocus={() => setShowSuggestions(true)}
                                 onKeyDown={handleAddTag}
                                 placeholder="Type to search tags..."
-                                className="w-full pl-4 pr-10 py-2.5 border border-gray-200 rounded-xl text-sm outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-all bg-gray-50 focus:bg-white"
+                                className="pr-10" // Make room for the chevron
                             />
 
                             <button
@@ -479,29 +476,38 @@ export default function EventsList() {
                                 <div className={`px-6 py-4 border-t border-black/5 flex flex-col gap-3 transition-colors ${colorEventsByTag && firstTag && !isFinished ? 'bg-white/20' : 'bg-gray-50'}`}>
                                     <div className="flex justify-between items-center">
                                         <div className="text-xs font-medium text-gray-500">By {event.organizer?.name}</div>
-                                        <Link to={`/events/${event.id}`} className="text-blue-600 text-sm font-semibold inline-flex items-center hover:text-blue-800 transition-colors">
-                                            View Details <ChevronRight size={16} className="ml-1" />
-                                        </Link>
+                                        <Button
+                                            variant="ghost"
+                                            size="sm"
+                                            onClick={() => navigate(`/events/${event.id}`)}
+                                            icon={<ExternalLink size={14} />}
+                                            className="!text-blue-600 hover:!bg-blue-50"
+                                        >
+                                            Details
+                                        </Button>
                                     </div>
 
                                     {!isOrganizer && (
                                         <div className="pt-1">
                                             {isJoined ? (
-                                                <button
+                                                <Button
+                                                    variant="outline"
+                                                    size="sm"
                                                     onClick={(e) => handleJoinLeave(e, event.id, 'leave')}
                                                     disabled={isFinished}
-                                                    className="w-full bg-white hover:bg-red-50 disabled:opacity-50 disabled:bg-gray-50 disabled:text-gray-400 text-red-600 text-xs font-bold py-2 px-3 border border-red-200 rounded-lg transition-all shadow-sm flex justify-center items-center"
+                                                    className="w-full !text-red-600 !border-red-200 hover:!bg-red-50"
                                                 >
                                                     Leave Event
-                                                </button>
+                                                </Button>
                                             ) : (
-                                                <button
+                                                <Button
+                                                    size="sm"
                                                     onClick={(e) => handleJoinLeave(e, event.id, 'join')}
                                                     disabled={isFull || isFinished}
-                                                    className="w-full bg-blue-600 hover:bg-blue-700 disabled:bg-gray-200 disabled:text-gray-500 text-white text-xs font-bold py-2 px-3 rounded-lg transition-all shadow-sm flex justify-center items-center"
+                                                    className="w-full"
                                                 >
                                                     {isFinished ? 'Finished' : isFull ? 'Full' : 'Join Event'}
-                                                </button>
+                                                </Button>
                                             )}
                                         </div>
                                     )}

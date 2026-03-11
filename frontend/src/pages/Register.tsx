@@ -5,6 +5,9 @@ import * as yup from 'yup';
 import { useNavigate, Link } from 'react-router-dom';
 import api from '../api/axios';
 import { useAuthStore } from '../store/authStore';
+import { Button } from '../components/Button';
+import { Input } from '../components/Input';
+import { Mail, Lock, User as UserIcon, UserPlus } from 'lucide-react';
 
 const schema = yup.object({
     email: yup.string().email('Invalid email').required('Email is required'),
@@ -48,41 +51,38 @@ export default function Register() {
                 )}
 
                 <form onSubmit={handleSubmit(onSubmit)} className="space-y-5">
-                    <div>
-                        <label className="block text-sm font-medium text-gray-700 mb-1">Full Name</label>
-                        <input
-                            {...register('name')}
-                            className="w-full rounded-lg border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 py-2.5 px-3 border outline-none"
-                            placeholder="John Doe"
-                        />
-                        {errors.name?.message && <p className="text-red-500 text-xs mt-1">{String(errors.name.message)}</p>}
-                    </div>
+                    <Input
+                        label="Full Name"
+                        icon={<UserIcon size={16} />}
+                        placeholder="John Doe"
+                        error={errors.name?.message as string}
+                        {...register('name')}
+                    />
 
-                    <div>
-                        <label className="block text-sm font-medium text-gray-700 mb-1">Email address</label>
-                        <input
-                            {...register('email')}
-                            className="w-full rounded-lg border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 py-2.5 px-3 border outline-none"
-                            placeholder="you@example.com"
-                        />
-                        {errors.email?.message && <p className="text-red-500 text-xs mt-1">{String(errors.email.message)}</p>}
-                    </div>
+                    <Input
+                        label="Email Address"
+                        type="email"
+                        icon={<Mail size={16} />}
+                        placeholder="you@example.com"
+                        error={errors.email?.message as string}
+                        {...register('email')}
+                    />
 
-                    <div>
-                        <label className="block text-sm font-medium text-gray-700 mb-1">Password</label>
-                        <input
-                            {...register('password')}
+                    <div className="space-y-1">
+                        <Input
+                            label="Password"
                             type="password"
-                            className="w-full rounded-lg border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 py-2.5 px-3 border outline-none"
+                            icon={<Lock size={16} />}
                             placeholder="••••••••"
+                            error={errors.password?.message as string}
+                            {...register('password')}
                         />
-                        {errors.password?.message && <p className="text-red-500 text-xs mt-1">{String(errors.password.message)}</p>}
-                        <p className="text-gray-400 text-xs mt-1.5">Minimum 6 characters, with uppercase and lowercase letters</p>
+                        <p className="text-[10px] text-gray-400 px-1 italic">Min 6 chars, with upper & lowercase.</p>
                     </div>
 
-                    <button type="submit" className="w-full bg-blue-600 hover:bg-blue-700 text-white font-medium py-2.5 rounded-lg shadow-sm transition-all mt-4 text-base tracking-wide">
+                    <Button type="submit" className="w-full mt-4" icon={<UserPlus size={18} />}>
                         Sign Up
-                    </button>
+                    </Button>
                 </form>
 
                 <p className="mt-8 text-center text-sm text-gray-600">

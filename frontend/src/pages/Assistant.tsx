@@ -2,6 +2,8 @@ import { useState, useRef, useEffect } from 'react';
 import { Send, Bot, User, Sparkles, Trash2, BrainCircuit } from 'lucide-react';
 import api from '../api/axios';
 import { useAssistantStore } from '../store/assistantStore';
+import { Button } from '../components/Button';
+import { Input } from '../components/Input';
 
 export default function Assistant() {
     const { messages, addMessage, clearMessages } = useAssistantStore();
@@ -55,12 +57,15 @@ export default function Assistant() {
                     </div>
                 </div>
                 {messages.length > 0 && (
-                    <button
+                    <Button
+                        variant="ghost"
+                        size="sm"
                         onClick={clearMessages}
-                        className="flex items-center gap-2 text-gray-400 hover:text-red-500 transition-colors text-sm font-medium px-3 py-1.5 hover:bg-red-50 rounded-lg"
+                        icon={<Trash2 size={16} />}
+                        className="!text-gray-400 hover:!text-red-500 hover:!bg-red-50"
                     >
-                        <Trash2 size={16} /> Clear Chat
-                    </button>
+                        Clear Chat
+                    </Button>
                 )}
             </div>
 
@@ -123,25 +128,22 @@ export default function Assistant() {
             {/* Input Area */}
             <div className="bg-white p-4 rounded-2xl border border-gray-100 shadow-lg mb-6">
                 <form onSubmit={handleSubmit} className="flex gap-2">
-                    <input
-                        type="text"
+                    <Input
                         value={input}
                         onChange={(e) => setInput(e.target.value)}
                         placeholder="Type your question here..."
-                        className="flex-1 bg-gray-50 border-none rounded-xl px-4 py-3 focus:ring-2 focus:ring-blue-500 focus:bg-white transition-all text-gray-900"
                         disabled={loading}
+                        containerClassName="flex-1"
                     />
-                    <button
+                    <Button
                         type="submit"
                         disabled={loading || !input.trim()}
-                        className="bg-blue-600 hover:bg-blue-700 disabled:opacity-50 disabled:bg-gray-400 text-white p-3 rounded-xl transition-all shadow-md hover:shadow-lg flex items-center justify-center min-w-[52px]"
+                        isLoading={loading}
+                        icon={<Send size={20} />}
+                        className="min-w-[52px]"
                     >
-                        {loading ? (
-                            <div className="w-5 h-5 border-2 border-white/30 border-t-white rounded-full animate-spin"></div>
-                        ) : (
-                            <Send size={20} />
-                        )}
-                    </button>
+                        Send
+                    </Button>
                 </form>
             </div>
         </div>

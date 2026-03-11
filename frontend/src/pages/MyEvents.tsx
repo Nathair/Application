@@ -13,6 +13,7 @@ import { useAuthStore } from '../store/authStore';
 import { useSettingsStore } from '../store/settingsStore';
 import { Modal, type ModalProps } from '../components/Modal';
 import { getTagStyle } from '../utils/tags';
+import { Button } from '../components/Button';
 
 const EventPill = ({ ev, colorEventsByTag, navigate }: { ev: Event, colorEventsByTag: boolean, navigate: any }) => {
     const past = isPast(new Date(ev.date));
@@ -142,9 +143,9 @@ export default function MyEvents() {
                     </div>
                     <h2 className="text-2xl font-bold text-gray-900 mb-3 tracking-tight">Your Calendar is Empty</h2>
                     <p className="text-gray-500 mb-8 text-lg">You are not part of any events yet.</p>
-                    <button onClick={() => navigate('/')} className="w-full bg-blue-600 hover:bg-blue-700 text-white font-semibold py-3 px-6 rounded-xl transition-all shadow-sm">
+                    <Button onClick={() => navigate('/')} className="w-full" size="lg">
                         Explore Public Events
-                    </button>
+                    </Button>
                 </div>
             </div>
         );
@@ -336,33 +337,44 @@ export default function MyEvents() {
 
                                     <div className="flex flex-wrap gap-2 md:justify-end">
                                         {isOrganizer && !past && (
-                                            <button
+                                            <Button
+                                                variant="secondary"
+                                                size="sm"
                                                 onClick={(e) => { e.stopPropagation(); navigate(`/create-event?edit=${ev.id}`); }}
-                                                className="whitespace-nowrap text-indigo-600 hover:text-indigo-800 text-sm font-semibold border border-indigo-200 rounded-lg px-4 py-2 hover:bg-indigo-50 transition-colors flex items-center gap-1.5"
+                                                icon={<Edit3 size={14} />}
                                             >
-                                                <Edit3 size={14} /> Edit
-                                            </button>
+                                                Edit
+                                            </Button>
                                         )}
                                         {!past && (
                                             isParticipant ? (
-                                                <button
+                                                <Button
+                                                    variant="outline"
+                                                    size="sm"
                                                     onClick={(e) => { e.stopPropagation(); handleLeave(ev.id); }}
-                                                    className="whitespace-nowrap text-red-600 hover:text-red-800 text-sm font-semibold border border-red-200 rounded-lg px-4 py-2 hover:bg-red-50 transition-colors flex items-center gap-1.5"
+                                                    icon={<LogOut size={14} />}
+                                                    className="!text-red-600 !border-red-200 hover:!bg-red-50"
                                                 >
-                                                    <LogOut size={14} /> Leave
-                                                </button>
+                                                    Leave
+                                                </Button>
                                             ) : (
-                                                <button
+                                                <Button
+                                                    size="sm"
                                                     onClick={(e) => { e.stopPropagation(); handleJoin(ev.id); }}
-                                                    className="whitespace-nowrap bg-blue-600 hover:bg-blue-700 text-white text-sm font-semibold rounded-lg px-4 py-2 transition-all shadow-sm flex items-center gap-1.5"
+                                                    icon={<UsersIcon size={14} />}
                                                 >
-                                                    <UsersIcon size={14} /> Join
-                                                </button>
+                                                    Join
+                                                </Button>
                                             )
                                         )}
-                                        <button onClick={() => navigate(`/events/${ev.id}`)} className="whitespace-nowrap text-blue-600 hover:text-blue-800 text-sm font-semibold border border-blue-200 rounded-lg px-4 py-2 hover:bg-blue-50 transition-colors">
+                                        <Button
+                                            variant="ghost"
+                                            size="sm"
+                                            onClick={() => navigate(`/events/${ev.id}`)}
+                                            className="!text-blue-600 hover:!bg-blue-50"
+                                        >
                                             View Details
-                                        </button>
+                                        </Button>
                                     </div>
                                 </div>
                             );
@@ -441,15 +453,15 @@ export default function MyEvents() {
                     {/* Date navigation (hidden for list view) */}
                     {view !== 'list' && (
                         <div className="flex gap-1">
-                            <button onClick={prev} className="p-2 border border-gray-200 rounded-lg hover:bg-gray-50 text-gray-600 bg-white shadow-sm">
+                            <Button variant="outline" size="sm" onClick={prev} className="!p-2">
                                 <ChevronLeft size={18} />
-                            </button>
-                            <button onClick={() => setCurrentDate(new Date())} className="px-3 py-2 border border-gray-200 rounded-lg text-gray-700 text-sm font-medium bg-white shadow-sm hover:bg-gray-50">
+                            </Button>
+                            <Button variant="outline" size="sm" onClick={() => setCurrentDate(new Date())}>
                                 Today
-                            </button>
-                            <button onClick={next} className="p-2 border border-gray-200 rounded-lg hover:bg-gray-50 text-gray-600 bg-white shadow-sm">
+                            </Button>
+                            <Button variant="outline" size="sm" onClick={next} className="!p-2">
                                 <ChevronRight size={18} />
-                            </button>
+                            </Button>
                         </div>
                     )}
                 </div>
