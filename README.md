@@ -7,7 +7,7 @@ A full-stack web application for creating, discovering, and managing events. Bui
 ---
 **🌐 API Documentation:** [https://eventify.nathair.dev/api/docs](https://eventify.nathair.dev/api/docs)
 ---
-**🌐 Storybook React:** [https://eventify.nathair.dev/storybook](https://eventify.nathair.dev/storybook)
+**🌐 Storybook React:** [https://storybook-eventify.nathair.dev](https://storybook-eventify.nathair.dev)
 ---
 ---
 
