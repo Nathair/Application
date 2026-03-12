@@ -3,9 +3,13 @@ import { useParams, useNavigate } from 'react-router-dom';
 import api from '../api/axios';
 import { useAuthStore } from '../store/authStore';
 import type { Event } from '../types';
-import { format, isSameDay, parseISO, isBefore } from 'date-fns';
-import { MapPin, Users, CalendarDays, Clock, ShieldCheck, ArrowLeft, Trash2, Edit3, AlertCircle, CheckCircle } from 'lucide-react';
+import { formatDate, formatTime } from '../utils/date';
+import { isSameDay, parseISO, isBefore } from 'date-fns';
+import { MapPin, Users, CalendarDays, Clock, ShieldCheck, ArrowLeft, Trash2, Edit3, AlertCircle, Tag as TagIcon } from 'lucide-react';
 import { Modal, type ModalProps } from '../components/Modal';
+import { getTagStyle } from '../utils/tags';
+import { useSettingsStore } from '../store/settingsStore';
+import { Button } from '../components/Button';
 
 // ── Main Component ─────────────────────────────────────────────────────────────
 export default function EventDetails() {
@@ -14,6 +18,7 @@ export default function EventDetails() {
     const [event, setEvent] = useState<Event | null>(null);
     const [loading, setLoading] = useState(true);
     const { user, isAuthenticated } = useAuthStore();
+    const { colorEventsByTag } = useSettingsStore();
 
     // Modal state
     const [modal, setModal] = useState<{
@@ -90,11 +95,20 @@ export default function EventDetails() {
             />
 
             <div className="max-w-4xl mx-auto space-y-6 animate-in slide-in-from-bottom-4 duration-500">
-                <button onClick={() => navigate(-1)} className="text-sm text-gray-500 hover:text-gray-900 flex items-center mb-6 transition-colors">
-                    <ArrowLeft size={16} className="mr-1" /> Back
-                </button>
+                <Button
+                    variant="ghost"
+                    size="sm"
+                    onClick={() => navigate(-1)}
+                    icon={<ArrowLeft size={16} />}
+                    className="mb-6 !text-gray-500 hover:!text-gray-900"
+                >
+                    Back
+                </Button>
 
-                <div className="bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden">
+                <div
+                    style={(colorEventsByTag && event.tags && event.tags.length > 0 && !isFinished) ? getTagStyle(event.tags[0].name) : {}}
+                    className="bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden transition-all duration-500"
+                >
                     <div className="bg-gradient-to-r from-blue-600 to-indigo-700 h-32 md:h-48 flex items-end">
                         <div className="p-8 w-full text-white">
                             <span className="inline-flex items-center rounded-full bg-white/20 backdrop-blur-sm px-3 py-1 text-xs font-semibold tracking-wide uppercase mb-3 border border-white/10">
@@ -108,14 +122,14 @@ export default function EventDetails() {
                         <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
                             <div className="md:col-span-2 space-y-8">
                                 <section>
-                                    <h3 className="text-xl font-bold text-gray-900 border-b border-gray-100 pb-2 mb-4">About this event</h3>
+                                    <h3 className={`text-xl font-bold text-gray-900 border-b border-black/5 pb-2 mb-4`}>About this event</h3>
                                     <p className="text-gray-600 leading-relaxed whitespace-pre-wrap text-lg">
                                         {event.description || "No description provided."}
                                     </p>
                                 </section>
 
                                 <section>
-                                    <h3 className="text-xl font-bold text-gray-900 border-b border-gray-100 pb-2 mb-4">Participants ({currentParticipants})</h3>
+                                    <h3 className="text-xl font-bold text-gray-900 border-b border-black/5 pb-2 mb-4">Participants ({currentParticipants})</h3>
                                     <div className="flex flex-wrap gap-2">
                                         {event.participants && event.participants.length > 0 ? (
                                             event.participants.map((p, i) => (
@@ -132,26 +146,26 @@ export default function EventDetails() {
                             </div>
 
                             <div className="space-y-6">
-                                <div className="bg-gray-50 p-6 rounded-xl border border-gray-100 space-y-5 shadow-sm">
+                                <div className={`p-6 rounded-xl border border-black/5 space-y-5 shadow-sm ${(colorEventsByTag && !isFinished && event.tags && event.tags.length > 0) ? 'bg-white/30 backdrop-blur-sm' : 'bg-gray-50'}`}>
 
                                     <div className="flex items-start text-gray-700">
                                         <CalendarDays className="mr-3 text-blue-500 mt-0.5 shrink-0" size={20} />
                                         <div>
                                             <p className="font-semibold text-lg">
-                                                {format(new Date(event.date), 'EEEE, MMMM d, yyyy')}
+                                                {formatDate(event.date)}
                                             </p>
                                             <div className="text-gray-600 flex flex-col mt-1">
                                                 <div className="flex items-center">
                                                     <Clock size={16} className="mr-2 text-gray-400" />
-                                                    <span className="font-medium text-gray-900">{format(new Date(event.date), 'h:mm a')}</span>
+                                                    <span className="font-medium text-gray-900">{formatTime(event.date)}</span>
                                                     {event.endDate && isSameDay(parseISO(event.date), parseISO(event.endDate)) && (
-                                                        <span className="ml-1">– {format(new Date(event.endDate), 'h:mm a')}</span>
+                                                        <span className="ml-1">– {formatTime(event.endDate)}</span>
                                                     )}
                                                 </div>
                                                 {event.endDate && !isSameDay(parseISO(event.date), parseISO(event.endDate)) && (
                                                     <div className="flex items-center mt-2 p-2 bg-blue-50 rounded-lg border border-blue-100 text-blue-800 text-sm">
                                                         <span className="font-bold mr-2 text-blue-500">ENDS:</span>
-                                                        {format(new Date(event.endDate), 'EEEE, MMMM d, yyyy @ h:mm a')}
+                                                        {formatDate(event.endDate)} @ {formatTime(event.endDate)}
                                                     </div>
                                                 )}
                                             </div>
@@ -184,6 +198,26 @@ export default function EventDetails() {
                                             </p>
                                         </div>
                                     </div>
+
+                                    {event.tags && event.tags.length > 0 && (
+                                        <div className="flex items-start text-gray-700">
+                                            <TagIcon className="mr-3 text-indigo-500 mt-0.5 shrink-0" size={20} />
+                                            <div>
+                                                <p className="font-semibold mb-2">Tags</p>
+                                                <div className="flex flex-wrap gap-2">
+                                                    {event.tags.map(tag => (
+                                                        <span
+                                                            key={tag.id}
+                                                            style={getTagStyle(tag.name)}
+                                                            className="inline-flex items-center rounded-full px-3 py-1 text-xs font-bold border uppercase tracking-tight shadow-sm"
+                                                        >
+                                                            {tag.name}
+                                                        </span>
+                                                    ))}
+                                                </div>
+                                            </div>
+                                        </div>
+                                    )}
                                     {isFinished && (
                                         <div className="mt-2 p-3 bg-gray-100 rounded-xl border border-gray-200 flex items-center gap-2 text-gray-600 font-bold text-sm">
                                             <AlertCircle size={18} className="text-gray-400" />
@@ -195,21 +229,23 @@ export default function EventDetails() {
                                 {/* Join/Leave */}
                                 <div className="pt-2">
                                     {isParticipant ? (
-                                        <button
+                                        <Button
+                                            variant="outline"
                                             onClick={() => handleJoinLeave('leave')}
                                             disabled={isFinished}
-                                            className="w-full bg-white hover:bg-red-50 disabled:opacity-50 disabled:bg-gray-50 disabled:text-gray-400 text-red-600 font-semibold py-3 px-4 border-2 border-red-200 rounded-xl transition-all shadow-sm flex justify-center items-center"
+                                            className="w-full !text-red-600 !border-red-200 hover:!bg-red-50"
                                         >
                                             Leave Event
-                                        </button>
+                                        </Button>
                                     ) : (
-                                        <button
+                                        <Button
                                             onClick={() => handleJoinLeave('join')}
                                             disabled={isFull || isFinished}
-                                            className="w-full bg-blue-600 hover:bg-blue-700 disabled:bg-gray-300 disabled:text-gray-500 text-white font-semibold py-3 px-4 rounded-xl transition-all shadow-md hover:shadow-lg disabled:shadow-none flex justify-center items-center text-lg"
+                                            className="w-full"
+                                            size="lg"
                                         >
                                             {isFinished ? 'Event Finished' : isFull ? 'Event is Full' : 'Join Event'}
-                                        </button>
+                                        </Button>
                                     )}
                                 </div>
 
@@ -217,13 +253,23 @@ export default function EventDetails() {
                                 {isOrganizer && (
                                     <div className="pt-4 mt-2 border-t border-gray-200 flex flex-col gap-3">
                                         {!isFinished && (
-                                            <button onClick={() => navigate(`/create-event?edit=${id}`)} className="w-full bg-indigo-50 hover:bg-indigo-100 text-indigo-700 font-semibold py-3 px-4 rounded-xl transition-all border border-indigo-200 flex justify-center items-center">
-                                                <Edit3 size={18} className="mr-2" /> Edit Details
-                                            </button>
+                                            <Button
+                                                variant="secondary"
+                                                onClick={() => navigate(`/create-event?edit=${id}`)}
+                                                icon={<Edit3 size={18} />}
+                                                className="w-full"
+                                            >
+                                                Edit Details
+                                            </Button>
                                         )}
-                                        <button onClick={handleDelete} className="w-full bg-white hover:bg-red-50 text-red-600 font-semibold py-3 px-4 border-2 border-red-200 rounded-xl transition-all shadow-sm flex justify-center items-center">
-                                            <Trash2 size={18} className="mr-2" /> Delete Event
-                                        </button>
+                                        <Button
+                                            variant="outline"
+                                            onClick={handleDelete}
+                                            icon={<Trash2 size={18} />}
+                                            className="w-full !text-red-600 !border-red-200 hover:!bg-red-50"
+                                        >
+                                            Delete Event
+                                        </Button>
                                     </div>
                                 )}
                             </div>

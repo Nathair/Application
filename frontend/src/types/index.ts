@@ -4,6 +4,11 @@ export interface User {
     name: string;
 }
 
+export interface Tag {
+    id: number;
+    name: string;
+}
+
 export interface Event {
     id: number;
     title: string;
@@ -18,6 +23,7 @@ export interface Event {
         id: number;
         name: string;
     };
+    tags: Tag[];
     _count?: {
         participants: number;
     };

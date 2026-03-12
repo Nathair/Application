@@ -7,10 +7,23 @@ import { Visibility } from '@prisma/client';
 export class EventsService {
     constructor(private prisma: PrismaService) { }
 
-    async getPublicEvents() {
+    async getPublicEvents(tagList?: string[]) {
+        const where: any = { visibility: Visibility.PUBLIC };
+        if (tagList && tagList.length > 0) {
+            where.tags = {
+                some: {
+                    name: { in: tagList.map(t => t.toLowerCase()) }
+                }
+            };
+        }
+
         return this.prisma.event.findMany({
-            where: { visibility: Visibility.PUBLIC },
-            include: { _count: { select: { participants: true } }, organizer: { select: { name: true, id: true } } },
+            where,
+            include: {
+                _count: { select: { participants: true } },
+                organizer: { select: { name: true, id: true } },
+                tags: true
+            },
             orderBy: { date: 'asc' },
         });
     }
@@ -21,6 +34,7 @@ export class EventsService {
             include: {
                 organizer: { select: { id: true, name: true } },
                 participants: { include: { user: { select: { id: true, name: true } } } },
+                tags: true
             },
         });
         if (!event) throw new NotFoundException('Event not found');
@@ -29,6 +43,7 @@ export class EventsService {
 
     async createEvent(userId: number, createEventDto: CreateEventDto) {
         const vis = createEventDto.visibility ? (createEventDto.visibility as Visibility) : Visibility.PUBLIC;
+        const normalizedTags = (createEventDto.tags || []).map(t => t.toLowerCase());
 
         return this.prisma.event.create({
             data: {
@@ -40,6 +55,12 @@ export class EventsService {
                 capacity: createEventDto.capacity,
                 visibility: vis,
                 organizerId: userId,
+                tags: {
+                    connectOrCreate: normalizedTags.map(tagName => ({
+                        where: { name: tagName },
+                        create: { name: tagName }
+                    }))
+                }
             },
         });
     }
@@ -48,7 +69,8 @@ export class EventsService {
         const event = await this.getEventById(eventId);
         if (event.organizerId !== userId) throw new ForbiddenException('Only organizer can edit this event');
 
-        const updateData: any = { ...updateEventDto };
+        const { tags, ...otherData } = updateEventDto;
+        const updateData: any = { ...otherData };
         if (updateData.visibility) {
             updateData.visibility = updateData.visibility as Visibility;
         }
@@ -64,9 +86,27 @@ export class EventsService {
             }
         }
 
+        if (tags) {
+            const normalizedTags = tags.map(t => t.toLowerCase());
+            updateData.tags = {
+                set: [], // Disconnect old tags
+                connectOrCreate: normalizedTags.map(tagName => ({
+                    where: { name: tagName },
+                    create: { name: tagName }
+                }))
+            };
+        }
+
         return this.prisma.event.update({
             where: { id: eventId },
             data: updateData,
+            include: { tags: true }
+        });
+    }
+
+    async getAllTags() {
+        return this.prisma.tag.findMany({
+            orderBy: { name: 'asc' }
         });
     }
 

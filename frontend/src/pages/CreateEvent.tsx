@@ -1,30 +1,44 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { useForm, Controller } from 'react-hook-form';
 import { yupResolver } from '@hookform/resolvers/yup';
 import * as yup from 'yup';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import api from '../api/axios';
-import { Calendar as CalendarIcon, MapPin, AlignLeft, Users, Type, Eye } from 'lucide-react';
+import { Calendar as CalendarIcon, MapPin, AlignLeft, Users, Type, Eye, Tag as TagIcon, X, ChevronDown } from 'lucide-react';
 import DatePicker from 'react-datepicker';
 import { isSameDay, isBefore } from 'date-fns';
 import 'react-datepicker/dist/react-datepicker.css';
 import { Modal, type ModalProps } from '../components/Modal';
+import { getTagStyle } from '../utils/tags';
+import { type Tag } from '../types';
+import { useSettingsStore } from '../store/settingsStore';
+import { Button } from '../components/Button';
+import { Input } from '../components/Input';
+import { Textarea } from '../components/Textarea';
+import { Save, Send } from 'lucide-react';
+
+const roundToNext15Minutes = (date: Date) => {
+    const minutes = 15;
+    const ms = 1000 * 60 * minutes;
+    return new Date(Math.ceil(date.getTime() / ms) * ms);
+};
 
 const schema = yup.object({
     title: yup.string().required('Title is required'),
     description: yup.string().optional(),
     date: yup.date()
-        .min(new Date(), 'Cannot create events in the past')
+        .min(new Date(new Date().getTime() + 14 * 60 * 1000), 'Event must start at least 15 minutes from now')
         .required('Start date and time are required')
         .typeError('Invalid date/time format'),
     endDate: yup.date()
         .nullable()
         .optional()
         .typeError('Invalid date/time format')
-        .test('is-after-start', 'End date must be after start date', function (value) {
+        .test('is-after-start', 'End date must be at least 15 minutes after start date', function (value) {
             const { date } = this.parent;
             if (!value || !date) return true;
-            return value > date;
+            const minEnd = new Date(new Date(date).getTime() + 15 * 60 * 1000);
+            return value >= minEnd;
         }),
     location: yup.string().required('Location is required'),
     capacity: yup.number()
@@ -33,6 +47,7 @@ const schema = yup.object({
         .min(1, 'Capacity must be at least 1')
         .optional(),
     visibility: yup.string().oneOf(['PUBLIC', 'PRIVATE']).default('PUBLIC'),
+    tags: yup.array().of(yup.string().required()).max(5, 'Maximum 5 tags allowed').optional(),
 });
 
 export default function CreateEvent() {
@@ -41,14 +56,25 @@ export default function CreateEvent() {
 
     const { register, handleSubmit, formState: { errors }, setValue, control, watch } = useForm({
         resolver: yupResolver(schema),
-        defaultValues: { visibility: 'PUBLIC', capacity: null }
+        defaultValues: {
+            visibility: 'PUBLIC',
+            capacity: null,
+            tags: [],
+            date: roundToNext15Minutes(new Date(new Date().getTime() + 15 * 60 * 1000)) as any
+        }
     });
 
     const startDate = watch('date');
+    const tags = watch('tags') || [];
 
     const [loading, setLoading] = useState(false);
     const [pageLoading, setPageLoading] = useState(!!editId);
+    const [tagInput, setTagInput] = useState('');
+    const [allTags, setAllTags] = useState<Tag[]>([]);
+    const [showSuggestions, setShowSuggestions] = useState(false);
+    const tagContainerRef = useRef<HTMLDivElement>(null);
     const navigate = useNavigate();
+    const { colorEventsByTag } = useSettingsStore();
 
     // Modal state
     const [modal, setModal] = useState<{
@@ -58,6 +84,21 @@ export default function CreateEvent() {
     const showModal = (type: ModalProps['type'], title: string, message: string, onConfirm?: () => void) => {
         setModal({ open: true, type, title, message, onConfirm });
     };
+
+    useEffect(() => {
+        // Fetch all available tags for autocomplete
+        api.get('/events/tags').then(res => setAllTags(res.data)).catch(console.error);
+
+        // Click outside listener
+        const handleClickOutside = (event: MouseEvent) => {
+            if (tagContainerRef.current && !tagContainerRef.current.contains(event.target as Node)) {
+                setShowSuggestions(false);
+            }
+        };
+
+        document.addEventListener('mousedown', handleClickOutside);
+        return () => document.removeEventListener('mousedown', handleClickOutside);
+    }, []);
 
     useEffect(() => {
         if (editId) {
@@ -77,6 +118,7 @@ export default function CreateEvent() {
                 setValue('location', ev.location);
                 setValue('capacity', ev.capacity);
                 setValue('visibility', ev.visibility);
+                setValue('tags', (ev.tags || []).map((t: any) => t.name));
                 setPageLoading(false);
             }).catch(() => {
                 showModal('error', 'Error', 'Failed to load event for editing');
@@ -84,6 +126,36 @@ export default function CreateEvent() {
             });
         }
     }, [editId, setValue, navigate]);
+
+    const handleAddTag = (e: React.KeyboardEvent) => {
+        if (e.key === 'Enter' || e.key === ',') {
+            e.preventDefault();
+            const val = tagInput.trim().replace(/,/g, '');
+            if (val && val.length < 2) return; // Min 2 chars
+            if (val && tags.length < 5 && !tags.includes(val)) {
+                setValue('tags', [...tags, val]);
+                setTagInput('');
+                setShowSuggestions(false);
+            }
+        }
+    };
+
+    const selectSuggestedTag = (tagName: string) => {
+        if (tags.length < 5 && !tags.includes(tagName)) {
+            setValue('tags', [...tags, tagName]);
+            setTagInput('');
+            setShowSuggestions(false);
+        }
+    };
+
+    const removeTag = (tagToRemove: string) => {
+        setValue('tags', tags.filter(t => t !== tagToRemove));
+    };
+
+    const filteredSuggestions = allTags.filter(t =>
+        t.name.toLowerCase().includes(tagInput.toLowerCase()) &&
+        !tags.includes(t.name)
+    );
 
     const onSubmit = async (data: any) => {
         setLoading(true);
@@ -118,8 +190,11 @@ export default function CreateEvent() {
                 onClose={() => setModal(m => ({ ...m, open: false }))}
             />
             <div className="max-w-2xl mx-auto py-8">
-                <div className="bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden">
-                    <div className="p-8 border-b border-gray-100 bg-gray-50/50">
+                <div
+                    style={(colorEventsByTag && tags.length > 0) ? getTagStyle(tags[0]) : {}}
+                    className="bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden transition-all duration-500"
+                >
+                    <div className={`p-8 border-b border-gray-100 ${(colorEventsByTag && tags.length > 0) ? 'bg-white/30 backdrop-blur-sm' : 'bg-gray-50/50'}`}>
                         <h1 className="text-3xl font-extrabold text-gray-900 tracking-tight">
                             {editId ? 'Edit Event Details' : 'Create New Event'}
                         </h1>
@@ -131,30 +206,22 @@ export default function CreateEvent() {
                     <div className="p-8">
                         <form onSubmit={handleSubmit(onSubmit)} className="space-y-6">
                             {/* Title */}
-                            <div>
-                                <label className="flex items-center text-sm font-semibold text-gray-700 mb-1.5">
-                                    <Type size={16} className="mr-2 text-gray-400" /> Event Title *
-                                </label>
-                                <input
-                                    {...register('title')}
-                                    className="input-field py-3 px-4 text-base focus:ring-2 bg-gray-50 focus:bg-white transition-colors"
-                                    placeholder="e.g. Summer Tech Meetup 2026"
-                                />
-                                {errors.title?.message && <p className="text-red-500 text-xs mt-1.5 font-medium">{String(errors.title.message)}</p>}
-                            </div>
+                            <Input
+                                label="Event Title *"
+                                icon={<Type size={16} />}
+                                placeholder="e.g. Summer Tech Meetup 2026"
+                                error={errors.title?.message as string}
+                                {...register('title')}
+                            />
 
                             {/* Description */}
-                            <div>
-                                <label className="flex items-center text-sm font-semibold text-gray-700 mb-1.5">
-                                    <AlignLeft size={16} className="mr-2 text-gray-400" /> Description
-                                </label>
-                                <textarea
-                                    {...register('description')}
-                                    rows={4}
-                                    className="input-field py-3 px-4 text-base focus:ring-2 bg-gray-50 focus:bg-white transition-colors resize-y"
-                                    placeholder="What is this event about?"
-                                />
-                            </div>
+                            <Textarea
+                                label="Description"
+                                icon={<AlignLeft size={16} />}
+                                placeholder="What is this event about?"
+                                rows={4}
+                                {...register('description')}
+                            />
 
                             {/* Start Date (required) + End Date (optional) */}
                             <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
@@ -168,7 +235,13 @@ export default function CreateEvent() {
                                         render={({ field }) => (
                                             <DatePicker
                                                 placeholderText="Select start date & time"
-                                                onChange={(date: Date | null) => field.onChange(date)}
+                                                onChange={(date: Date | null) => {
+                                                    if (date) {
+                                                        field.onChange(roundToNext15Minutes(date));
+                                                    } else {
+                                                        field.onChange(null);
+                                                    }
+                                                }}
                                                 selected={field.value as any}
                                                 showTimeSelect
                                                 timeFormat="HH:mm"
@@ -178,8 +251,10 @@ export default function CreateEvent() {
                                                 className={datepickerClass}
                                                 wrapperClassName="w-full"
                                                 minDate={new Date()}
-                                                minTime={isSameDay(new Date(), field.value ? new Date(field.value as any) : new Date()) ? new Date() : undefined}
-                                                maxTime={isSameDay(new Date(), field.value ? new Date(field.value as any) : new Date()) ? new Date(new Date().setHours(23, 59, 59)) : undefined}
+                                                minTime={isSameDay(new Date(), field.value ? new Date(field.value as any) : new Date())
+                                                    ? new Date(new Date().getTime() + 15 * 60 * 1000)
+                                                    : new Date(new Date().setHours(0, 0, 0, 0))}
+                                                maxTime={new Date(new Date().setHours(23, 45, 0, 0))}
                                             />
                                         )}
                                     />
@@ -196,7 +271,13 @@ export default function CreateEvent() {
                                         render={({ field }) => (
                                             <DatePicker
                                                 placeholderText="Select end date & time"
-                                                onChange={(date: Date | null) => field.onChange(date)}
+                                                onChange={(date: Date | null) => {
+                                                    if (date) {
+                                                        field.onChange(roundToNext15Minutes(date));
+                                                    } else {
+                                                        field.onChange(null);
+                                                    }
+                                                }}
                                                 selected={field.value as any}
                                                 showTimeSelect
                                                 timeFormat="HH:mm"
@@ -209,10 +290,8 @@ export default function CreateEvent() {
                                                 minDate={startDate ? new Date(startDate) : new Date()}
                                                 minTime={startDate && isSameDay(new Date(startDate), field.value ? new Date(field.value as any) : new Date(startDate))
                                                     ? new Date(new Date(startDate).getTime() + 15 * 60 * 1000)
-                                                    : undefined}
-                                                maxTime={startDate && isSameDay(new Date(startDate), field.value ? new Date(field.value as any) : new Date(startDate))
-                                                    ? new Date(new Date(startDate).setHours(23, 59, 59))
-                                                    : undefined}
+                                                    : new Date(new Date().setHours(0, 0, 0, 0))}
+                                                maxTime={new Date(new Date().setHours(23, 45, 0, 0))}
                                             />
                                         )}
                                     />
@@ -221,17 +300,13 @@ export default function CreateEvent() {
                             </div>
 
                             {/* Location */}
-                            <div>
-                                <label className="flex items-center text-sm font-semibold text-gray-700 mb-1.5">
-                                    <MapPin size={16} className="mr-2 text-gray-400" /> Location *
-                                </label>
-                                <input
-                                    {...register('location')}
-                                    className="input-field py-3 px-4 text-base focus:ring-2 bg-gray-50 focus:bg-white transition-colors"
-                                    placeholder="e.g. 123 Main St, City"
-                                />
-                                {errors.location?.message && <p className="text-red-500 text-xs mt-1.5 font-medium">{String(errors.location.message)}</p>}
-                            </div>
+                            <Input
+                                label="Location *"
+                                icon={<MapPin size={16} />}
+                                placeholder="e.g. 123 Main St, City"
+                                error={errors.location?.message as string}
+                                {...register('location')}
+                            />
 
                             {/* Capacity */}
                             <div>
@@ -242,7 +317,7 @@ export default function CreateEvent() {
                                     control={control}
                                     name="capacity"
                                     render={({ field }) => (
-                                        <input
+                                        <Input
                                             type="number"
                                             value={field.value ?? ''}
                                             onKeyDown={(e) => {
@@ -259,12 +334,96 @@ export default function CreateEvent() {
                                                     field.onChange(val);
                                                 }
                                             }}
-                                            className="input-field py-3 px-4 text-base focus:ring-2 bg-gray-50 focus:bg-white transition-colors"
                                             placeholder={!field.value && field.value !== 0 ? "Set visitor limit or leave for no limit" : ""}
+                                            error={errors.capacity?.message as string}
                                         />
                                     )}
                                 />
-                                {errors.capacity?.message && <p className="text-red-500 text-xs mt-1.5 font-medium">{String(errors.capacity.message)}</p>}
+                            </div>
+
+                            {/* Tags */}
+                            <div>
+                                <label className="flex items-center text-sm font-semibold text-gray-700 mb-1.5">
+                                    <TagIcon size={16} className="mr-2 text-gray-400" /> Tags (Max 5)
+                                </label>
+                                <div className="space-y-3">
+                                    <div className="flex flex-wrap gap-2 min-h-[32px]">
+                                        {tags.map((tag: string) => {
+                                            const style = getTagStyle(tag);
+                                            return (
+                                                <span
+                                                    key={tag}
+                                                    style={style}
+                                                    className="inline-flex items-center gap-1 px-3 py-1 rounded-full text-xs font-bold border uppercase tracking-tight shadow-sm"
+                                                >
+                                                    {tag}
+                                                    <button
+                                                        type="button"
+                                                        onClick={() => removeTag(tag)}
+                                                        className="hover:opacity-70 transition-colors ml-1"
+                                                    >
+                                                        <X size={12} />
+                                                    </button>
+                                                </span>
+                                            );
+                                        })}
+                                        {tags.length === 0 && <span className="text-gray-400 text-sm italic">No tags added yet.</span>}
+                                    </div>
+                                    <div className="space-y-2" ref={tagContainerRef}>
+                                        <div className="relative">
+                                            <input
+                                                type="text"
+                                                value={tagInput}
+                                                onChange={e => {
+                                                    setTagInput(e.target.value);
+                                                    setShowSuggestions(true);
+                                                }}
+                                                onFocus={() => setShowSuggestions(true)}
+                                                onKeyDown={handleAddTag}
+                                                placeholder={tags.length < 5 ? "Type a tag and press Enter..." : "Maximum tags reached"}
+                                                disabled={tags.length >= 5}
+                                                className="input-field py-3 pl-4 pr-10 text-base focus:ring-2 bg-gray-50 focus:bg-white transition-colors"
+                                            />
+
+                                            {tags.length < 5 && (
+                                                <button
+                                                    type="button"
+                                                    onClick={() => setShowSuggestions(!showSuggestions)}
+                                                    className="absolute inset-y-0 right-0 px-3 flex items-center text-gray-400 hover:text-blue-500 transition-colors"
+                                                >
+                                                    <ChevronDown size={20} className={`transition-transform duration-200 ${showSuggestions ? 'rotate-180' : ''}`} />
+                                                </button>
+                                            )}
+
+                                            {showSuggestions && filteredSuggestions.length > 0 && (
+                                                <div className="absolute z-10 w-full mt-1 bg-white border border-gray-200 rounded-xl shadow-lg overflow-y-auto max-h-60 py-1 animate-in fade-in slide-in-from-top-1 custom-scrollbar">
+                                                    {filteredSuggestions.map(tag => (
+                                                        <button
+                                                            key={tag.id}
+                                                            type="button"
+                                                            onClick={() => {
+                                                                selectSuggestedTag(tag.name);
+                                                                setShowSuggestions(false);
+                                                            }}
+                                                            className="w-full text-left px-4 py-2 text-sm hover:bg-blue-50 transition-colors flex justify-between items-center"
+                                                        >
+                                                            <span>{tag.name}</span>
+                                                            <span className="text-[10px] text-gray-400 uppercase font-bold">Suggested</span>
+                                                        </button>
+                                                    ))}
+                                                </div>
+                                            )}
+                                        </div>
+
+                                        <div className="text-[10px] text-gray-400 flex justify-between px-1">
+                                            <span>Press Enter or comma to add tag. Min 2 characters.</span>
+                                            {tagInput.length > 0 && tagInput.length < 2 && (
+                                                <span className="text-amber-500 font-bold">Too short ({tagInput.length}/2)</span>
+                                            )}
+                                        </div>
+                                    </div>
+                                </div>
+                                {errors.tags?.message && <p className="text-red-500 text-xs mt-1.5 font-medium">{String(errors.tags.message)}</p>}
                             </div>
 
                             {/* Visibility with explanations */}
@@ -292,22 +451,21 @@ export default function CreateEvent() {
 
                             {/* Actions */}
                             <div className="pt-6 border-t border-gray-100 flex justify-end gap-3">
-                                <button
+                                <Button
+                                    variant="outline"
                                     type="button"
                                     onClick={() => navigate(-1)}
-                                    className="px-6 py-3 border-2 border-gray-200 text-gray-700 font-semibold rounded-xl hover:bg-gray-50 transition-colors"
                                     disabled={loading}
                                 >
                                     Cancel
-                                </button>
-                                <button
+                                </Button>
+                                <Button
                                     type="submit"
-                                    className="px-8 py-3 bg-blue-600 text-white font-semibold rounded-xl hover:bg-blue-700 shadow-sm hover:shadow transition-all disabled:opacity-70 disabled:cursor-not-allowed flex items-center gap-2"
-                                    disabled={loading}
+                                    isLoading={loading}
+                                    icon={editId ? <Save size={18} /> : <Send size={18} />}
                                 >
-                                    {loading && <div className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin"></div>}
                                     {editId ? 'Save Changes' : 'Publish Event'}
-                                </button>
+                                </Button>
                             </div>
                         </form>
                     </div>

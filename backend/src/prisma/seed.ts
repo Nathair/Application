@@ -40,6 +40,13 @@ async function main() {
             capacity: 100,
             visibility: Visibility.PUBLIC,
             organizerId: user1.id,
+            tags: {
+                connectOrCreate: [
+                    { where: { name: 'tech' }, create: { name: 'tech' } },
+                    { where: { name: 'conference' }, create: { name: 'conference' } },
+                    { where: { name: 'ai' }, create: { name: 'ai' } }
+                ]
+            }
         },
         {
             title: 'Last Night Party (Past Event)',
@@ -50,6 +57,12 @@ async function main() {
             capacity: 200,
             visibility: Visibility.PUBLIC,
             organizerId: user2.id,
+            tags: {
+                connectOrCreate: [
+                    { where: { name: 'party' }, create: { name: 'party' } },
+                    { where: { name: 'music' }, create: { name: 'music' } }
+                ]
+            }
         },
         {
             title: 'Long Workshop (3 Days)',
@@ -57,9 +70,15 @@ async function main() {
             date: new Date(now.getTime() + 2 * 24 * 60 * 60 * 1000),
             endDate: new Date(now.getTime() + 5 * 24 * 60 * 60 * 1000),
             location: 'Remote, Zoom',
-            capacity: null as number | null, // Unlimited
+            capacity: null as number | null,
             visibility: Visibility.PUBLIC,
             organizerId: user3.id,
+            tags: {
+                connectOrCreate: [
+                    { where: { name: 'workshop' }, create: { name: 'workshop' } },
+                    { where: { name: 'education' }, create: { name: 'education' } }
+                ]
+            }
         },
         {
             title: 'Full House Meetup',
@@ -69,6 +88,12 @@ async function main() {
             capacity: 2,
             visibility: Visibility.PUBLIC,
             organizerId: user1.id,
+            tags: {
+                connectOrCreate: [
+                    { where: { name: 'meetup' }, create: { name: 'meetup' } },
+                    { where: { name: 'tech' }, create: { name: 'tech' } }
+                ]
+            }
         },
         {
             title: 'Private Founder Dinner',
@@ -78,15 +103,27 @@ async function main() {
             capacity: 10,
             visibility: Visibility.PRIVATE,
             organizerId: user2.id,
+            tags: {
+                connectOrCreate: [
+                    { where: { name: 'business' }, create: { name: 'business' } },
+                    { where: { name: 'networking' }, create: { name: 'networking' } }
+                ]
+            }
         },
         {
             title: 'Morning Yoga (Daily)',
             description: 'Quick morning yoga session.',
-            date: new Date(now.getTime() + 1 * 60 * 60 * 1000), // In 1 hour
+            date: new Date(now.getTime() + 1 * 60 * 60 * 1000),
             location: 'Park',
             capacity: 15,
             visibility: Visibility.PUBLIC,
             organizerId: user3.id,
+            tags: {
+                connectOrCreate: [
+                    { where: { name: 'yoga' }, create: { name: 'yoga' } },
+                    { where: { name: 'health' }, create: { name: 'health' } }
+                ]
+            }
         }
     ];
 

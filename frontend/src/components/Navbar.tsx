@@ -1,10 +1,13 @@
 import { useState } from 'react';
 import { Link, useNavigate, useLocation } from 'react-router-dom';
 import { useAuthStore } from '../store/authStore';
-import { LogOut, Calendar, Home, PlusCircle, Menu, X } from 'lucide-react';
+import { LogOut, Calendar, Home, PlusCircle, Menu, X, Tag as TagIcon, Sparkles } from 'lucide-react';
+import { useSettingsStore } from '../store/settingsStore';
+import { Button } from './Button';
 
 export default function Navbar() {
     const { isAuthenticated, logout } = useAuthStore();
+    const { colorEventsByTag, toggleColorByTag } = useSettingsStore();
     const navigate = useNavigate();
     const location = useLocation();
     const [mobileOpen, setMobileOpen] = useState(false);
@@ -48,24 +51,56 @@ export default function Navbar() {
                                     <Link to="/create-event" className={`inline-flex items-center px-1 pt-1 border-b-2 transition-colors text-sm font-medium gap-1.5 ${isActive('/create-event')}`}>
                                         <PlusCircle size={18} /> Create Event
                                     </Link>
+                                    <Link to="/assistant" className={`inline-flex items-center px-1 pt-1 border-b-2 transition-colors text-sm font-medium gap-1.5 ${isActive('/assistant')}`}>
+                                        <Sparkles size={18} className="text-blue-600" /> AI Assistant
+                                    </Link>
                                 </>
                             )}
                         </div>
                     </div>
 
                     {/* Desktop right side */}
-                    <div className="hidden sm:flex sm:items-center">
-                        {isAuthenticated ? (
+                    <div className="hidden sm:flex sm:items-center gap-4">
+                        <div className="flex items-center gap-2 mr-2">
+                            <span className="text-[10px] font-bold text-gray-400 uppercase tracking-widest hidden lg:block">Color Cards</span>
                             <button
-                                onClick={handleLogout}
-                                className="inline-flex items-center gap-2 bg-gray-50 hover:bg-gray-100 text-gray-700 px-4 py-2 rounded-lg text-sm font-medium transition-colors border border-gray-200"
+                                onClick={toggleColorByTag}
+                                title={`${colorEventsByTag ? 'Disable' : 'Enable'} tag-based event coloring`}
+                                className={`relative inline-flex h-5 w-9 items-center rounded-full transition-colors focus:outline-none ${colorEventsByTag ? 'bg-blue-600' : 'bg-gray-200'
+                                    }`}
                             >
-                                <LogOut size={16} /> Logout
+                                <span className="sr-only">Toggle tag coloring</span>
+                                <span
+                                    className={`inline-block h-3 w-3 transform rounded-full bg-white transition-transform ${colorEventsByTag ? 'translate-x-5' : 'translate-x-1'
+                                        }`}
+                                />
                             </button>
+                        </div>
+                        {isAuthenticated ? (
+                            <Button
+                                variant="outline"
+                                size="sm"
+                                onClick={handleLogout}
+                                icon={<LogOut size={16} />}
+                                className="!bg-gray-50 hover:!bg-gray-100 !text-gray-700 !border-gray-200"
+                            >
+                                Logout
+                            </Button>
                         ) : (
                             <div className="flex gap-3">
-                                <Link to="/login" className="text-gray-700 hover:text-blue-600 px-3 py-2 rounded-md text-sm font-medium transition-colors">Login</Link>
-                                <Link to="/register" className="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-lg text-sm font-medium transition-colors shadow-sm">Sign up</Link>
+                                <Button
+                                    variant="ghost"
+                                    size="sm"
+                                    onClick={() => navigate('/login')}
+                                >
+                                    Login
+                                </Button>
+                                <Button
+                                    size="sm"
+                                    onClick={() => navigate('/register')}
+                                >
+                                    Sign up
+                                </Button>
                             </div>
                         )}
                     </div>
@@ -98,18 +133,50 @@ export default function Navbar() {
                                 <Link to="/create-event" onClick={() => setMobileOpen(false)} className={`flex items-center gap-2 px-3 py-2.5 rounded-lg text-sm font-medium transition-colors ${mobileLink('/create-event')}`}>
                                     <PlusCircle size={18} /> Create Event
                                 </Link>
+                                <Link to="/assistant" onClick={() => setMobileOpen(false)} className={`flex items-center gap-2 px-3 py-2.5 rounded-lg text-sm font-medium transition-colors ${mobileLink('/assistant')}`}>
+                                    <Sparkles size={18} className="text-blue-500" /> AI Assistant
+                                </Link>
                             </>
                         )}
                     </div>
-                    <div className="px-4 py-3 border-t border-gray-100">
-                        {isAuthenticated ? (
-                            <button onClick={handleLogout} className="w-full flex items-center gap-2 px-3 py-2.5 rounded-lg text-sm font-medium text-red-600 hover:bg-red-50 transition-colors">
-                                <LogOut size={18} /> Logout
+                    <div className="px-4 py-3 border-t border-gray-100 space-y-3">
+                        <div className="flex items-center justify-between px-3 py-2 rounded-lg bg-gray-50">
+                            <span className="text-sm font-medium text-gray-700 flex items-center gap-2">
+                                <TagIcon size={16} className="text-gray-400" /> Tag-based coloring
+                            </span>
+                            <button
+                                onClick={toggleColorByTag}
+                                className={`relative inline-flex h-5 w-9 items-center rounded-full transition-colors focus:outline-none ${colorEventsByTag ? 'bg-blue-600' : 'bg-gray-200'
+                                    }`}
+                            >
+                                <span
+                                    className={`inline-block h-3 w-3 transform rounded-full bg-white transition-transform ${colorEventsByTag ? 'translate-x-5' : 'translate-x-1'
+                                        }`}
+                                />
                             </button>
+                        </div>
+                        {isAuthenticated ? (
+                            <Button
+                                variant="outline"
+                                onClick={handleLogout}
+                                icon={<LogOut size={18} />}
+                                className="w-full !text-red-600 !border-red-50 hover:!bg-red-50 !justify-start"
+                            >
+                                Logout
+                            </Button>
                         ) : (
                             <div className="grid grid-cols-2 gap-2">
-                                <Link to="/login" onClick={() => setMobileOpen(false)} className="text-center text-gray-700 hover:text-blue-600 px-3 py-2.5 rounded-lg text-sm font-medium border border-gray-200 hover:bg-gray-50 transition-colors">Login</Link>
-                                <Link to="/register" onClick={() => setMobileOpen(false)} className="text-center bg-blue-600 hover:bg-blue-700 text-white px-3 py-2.5 rounded-lg text-sm font-medium transition-colors shadow-sm">Sign up</Link>
+                                <Button
+                                    variant="outline"
+                                    onClick={() => { setMobileOpen(false); navigate('/login'); }}
+                                >
+                                    Login
+                                </Button>
+                                <Button
+                                    onClick={() => { setMobileOpen(false); navigate('/register'); }}
+                                >
+                                    Sign up
+                                </Button>
                             </div>
                         )}
                     </div>

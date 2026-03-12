@@ -1,4 +1,5 @@
 import { AlertCircle, CheckCircle } from 'lucide-react';
+import { Button } from './Button';
 
 export interface ModalProps {
     isOpen: boolean;
@@ -30,19 +31,21 @@ export function Modal({ isOpen, type, title, message, confirmLabel = 'Confirm', 
                 <h3 className="text-lg font-bold text-gray-900 text-center mb-2">{title}</h3>
                 <p className="text-gray-500 text-center text-sm mb-6">{message}</p>
                 <div className="flex gap-3 justify-center">
-                    <button
+                    <Button
+                        variant="outline"
                         onClick={onClose}
-                        className="flex-1 px-4 py-2.5 border-2 border-gray-200 text-gray-700 font-semibold rounded-xl hover:bg-gray-50 transition-colors text-sm"
+                        className="flex-1"
                     >
                         {onConfirm ? cancelLabel : 'Close'}
-                    </button>
+                    </Button>
                     {onConfirm && (
-                        <button
+                        <Button
+                            variant={isError ? 'danger' : 'primary'}
                             onClick={() => { onConfirm(); onClose(); }}
-                            className={`flex-1 px-4 py-2.5 ${accentState.btn} text-white font-semibold rounded-xl transition-colors text-sm shadow-sm`}
+                            className="flex-1"
                         >
                             {confirmLabel}
-                        </button>
+                        </Button>
                     )}
                 </div>
             </div>
